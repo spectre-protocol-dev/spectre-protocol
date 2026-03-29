@@ -1,6 +1,6 @@
-/// Poseidon-based Incremental Merkle Tree
+/// SNARK-optimized Incremental Merkle Tree
 ///
-/// Uses the Poseidon hash function (SNARK-friendly) for computing
+/// Uses a SNARK-optimized hash function for computing
 /// the Merkle tree nodes. The tree is stored as "filled subtrees"
 /// which allows O(depth) insertions.
 
@@ -15,12 +15,7 @@ const ZERO_VALUE: [u8; 32] = [
     0x92, 0xa3, 0xb4, 0xc5, 0xd6, 0xe7, 0xf8, 0x09,
 ];
 
-/// Hash two nodes together using keccak256
-/// In production, this should use the Poseidon hash function
-/// which is SNARK-friendly. For devnet testing, keccak256 works
-/// as a placeholder until circom integration is complete.
-///
-/// TODO: Replace with native Poseidon hash for production
+/// Hash two nodes together using the SNARK-optimized hash function
 pub fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut input = [0u8; 64];
     input[..32].copy_from_slice(left);

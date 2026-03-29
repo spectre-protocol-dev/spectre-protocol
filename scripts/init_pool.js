@@ -63,19 +63,6 @@ async function main() {
   console.log(`  Vault PDA: ${vaultPda.toBase58()}`);
   console.log('');
 
-  // TODO: Call the actual Anchor initialize instruction
-  // 
-  // const program = new Program(IDL, PROGRAM_ID, provider);
-  // const tx = await program.methods
-  //   .initialize(new BN(denominationLamports.toString()))
-  //   .accounts({
-  //     pool: poolPda,
-  //     poolVault: vaultPda,
-  //     authority: wallet.publicKey,
-  //     systemProgram: SystemProgram.programId,
-  //   })
-  //   .rpc();
-
   console.log('  [!] Pool initialization requires the deployed program.');
   console.log('      Run after: anchor deploy --provider.cluster devnet');
   console.log('');

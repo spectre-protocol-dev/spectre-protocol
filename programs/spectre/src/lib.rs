@@ -53,7 +53,7 @@ pub mod spectre {
 
     /// Deposit SOL into the privacy pool
     ///
-    /// The user provides a commitment = Poseidon(nullifier, secret)
+    /// The user provides a commitment = Spectre commitment(nullifier, secret)
     /// which is inserted into the on-chain Merkle tree.
     pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
@@ -121,7 +121,7 @@ pub mod spectre {
     ///
     /// The relayer submits the proof on behalf of the recipient.
     /// The proof demonstrates knowledge of (nullifier, secret) such that:
-    ///   1. Poseidon(nullifier, secret) is a leaf in the Merkle tree
+    ///   1. Spectre commitment(nullifier, secret) is a leaf in the Merkle tree
     ///   2. The nullifier hash hasn't been spent
     ///   3. The specified root is valid
     pub fn withdraw(

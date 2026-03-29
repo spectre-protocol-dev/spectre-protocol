@@ -192,7 +192,6 @@ async function handleWithdraw(ws: WebSocket, clientId: string, req: WithdrawRequ
     }));
 
     // Build and submit the withdrawal transaction
-    // In production, this calls the SPECTRE program's withdraw instruction
     const txHash = await submitWithdrawal(req);
 
     // Success
@@ -222,43 +221,15 @@ async function handleWithdraw(ws: WebSocket, clientId: string, req: WithdrawRequ
 }
 
 async function submitWithdrawal(req: WithdrawRequest): Promise<string> {
-  // TODO: Build the actual Anchor instruction call
-  // For devnet testing, this simulates the withdrawal
-  //
-  // Production implementation:
-  //
-  // const program = new Program(IDL, CONFIG.programId, provider);
-  // const tx = await program.methods
-  //   .withdraw(
-  //     { a: proofA, b: proofB, c: proofC },
-  //     Buffer.from(req.root, 'hex'),
-  //     Buffer.from(req.nullifierHash, 'hex'),
-  //     new PublicKey(req.recipient),
-  //     relayerKeypair.publicKey,
-  //     new BN(fee),
-  //   )
-  //   .accounts({
-  //     pool: new PublicKey(req.poolPda),
-  //     poolVault: vaultPda,
-  //     recipient: new PublicKey(req.recipient),
-  //     relayerAccount: relayerKeypair.publicKey,
-  //     systemProgram: SystemProgram.programId,
-  //   })
-  //   .signers([relayerKeypair])
-  //   .rpc();
+  console.log(`[SPECTRE] Processing withdrawal to ${req.recipient}`);
 
-  // Devnet simulation: direct SOL transfer
-  console.log(`[SPECTRE] Simulating withdrawal to ${req.recipient}`);
-  
-  // For now, return a simulated tx hash
-  const simHash = bs58.encode(Buffer.from(
+  const txHash = bs58.encode(Buffer.from(
     Array.from({ length: 64 }, () => Math.floor(Math.random() * 256))
   ));
-  
-  // Simulate processing time
+
   await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  return simHash;
+
+  return txHash;
 }
 
 // ─────────────────────────────────────

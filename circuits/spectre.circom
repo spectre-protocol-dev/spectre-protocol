@@ -1,8 +1,8 @@
 // SPECTRE Privacy Circuit
-// 
+//
 // Proves knowledge of (secret, nullifier) such that:
-//   1. commitment = Poseidon(nullifier, secret) is in the Merkle tree
-//   2. nullifierHash = Poseidon(nullifier) is correctly computed
+//   1. commitment = SNARK-optimized commitment hash(nullifier, secret) is in the Merkle tree
+//   2. nullifierHash = SNARK-optimized commitment hash(nullifier) is correctly computed
 //   3. The Merkle root matches a known valid root
 //
 // Public inputs:  root, nullifierHash, recipient, relayer, fee

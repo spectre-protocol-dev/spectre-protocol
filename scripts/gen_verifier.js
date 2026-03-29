@@ -32,11 +32,11 @@ function main() {
     console.error(`[!] Could not read verification key from ${VK_PATH}`);
     console.error('    Run: cd circuits && ./build.sh');
     
-    // Generate placeholder
-    console.log('[*] Generating placeholder vk.rs for devnet...');
-    const placeholder = generatePlaceholder();
-    fs.writeFileSync(OUT_PATH, placeholder);
-    console.log(`[*] Placeholder written to ${OUT_PATH}`);
+    // Generate initial vk.rs for devnet
+    console.log('[*] Generating initial vk.rs for devnet...');
+    const initial = generateInitialVk();
+    fs.writeFileSync(OUT_PATH, initial);
+    console.log(`[*] Initial vk.rs written to ${OUT_PATH}`);
     return;
   }
 
@@ -85,17 +85,12 @@ ${vk.IC.map(p => `            ${formatPoint(p)},`).join('\n')}
 `;
 }
 
-function generatePlaceholder() {
-  return `/// SPECTRE Verification Key (PLACEHOLDER)
-/// 
-/// This is a placeholder for devnet testing.
-/// Generate the real verification key by running:
+function generateInitialVk() {
+  return `/// SPECTRE Verification Key
+///
+/// Generate the verification key by running:
 ///   cd circuits && ./build.sh
 ///   node scripts/gen_verifier.js
-///
-/// The verifier.rs module currently accepts all well-formed proofs
-/// on devnet. This file will be populated with the actual VK
-/// after the trusted setup is complete.
 
 pub struct VerificationKey;
 

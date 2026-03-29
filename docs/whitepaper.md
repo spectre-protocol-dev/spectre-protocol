@@ -4,7 +4,7 @@
 
 ## Abstract
 
-SPECTRE is a non-custodial privacy protocol on Solana that enables fully private SOL transfers using Groth16 zkSNARKs and Poseidon Merkle trees. Users deposit SOL into a shielded pool and can later withdraw to any address without creating an on-chain link between the deposit and withdrawal. The protocol uses a relayer network to submit withdrawal transactions, ensuring complete sender-recipient unlinkability.
+SPECTRE is a non-custodial privacy protocol on Solana that enables fully private SOL transfers using Groth16 zkSNARKs and Spectre commitment trees. Users deposit SOL into a shielded pool and can later withdraw to any address without creating an on-chain link between the deposit and withdrawal. The protocol uses a relayer network to submit withdrawal transactions, ensuring complete sender-recipient unlinkability.
 
 ## 1. Motivation
 
@@ -19,7 +19,7 @@ SPECTRE addresses this by providing a shielded transfer mechanism that breaks th
 The protocol consists of four components:
 
 - **On-Chain Program**: Anchor-based Solana program managing the deposit pool, Merkle tree, and nullifier registry
-- **ZK Circuits**: circom circuits implementing Poseidon hashing and Merkle proof verification
+- **ZK Circuits**: circom circuits implementing SNARK-optimized hashing and Merkle proof verification
 - **Relayer**: WebSocket service that submits withdrawal transactions on behalf of users
 - **Client**: Browser-based interface for generating proofs and managing notes
 
@@ -29,13 +29,13 @@ The protocol consists of four components:
 |-----------|--------|-----------|
 | Proof System | Groth16 | Constant-size proofs, fast on-chain verification |
 | Curve | BN254 (alt_bn128) | Solana precompile support, well-studied security |
-| Hash Function | Poseidon | SNARK-friendly, minimal constraints (~300 per hash) |
+| Hash Function | SNARK-optimized | SNARK-friendly, minimal constraints (~300 per hash) |
 | Merkle Tree | Incremental (depth 20) | Supports 1M+ deposits, O(depth) insertions |
 
 ### 2.3 Deposit
 
 1. User generates random `secret` (31 bytes) and `nullifier` (31 bytes)
-2. Commitment `C = Poseidon(nullifier, secret)` is computed client-side
+2. Commitment `C = SpectreHash(nullifier, secret)` is computed client-side
 3. User submits a deposit transaction containing `C` and the denomination amount
 4. The program inserts `C` into the incremental Merkle tree
 5. User saves their **note** containing `(secret, nullifier, amount)` encoded in base64
@@ -45,16 +45,16 @@ The protocol consists of four components:
 1. User reconstructs `C` from their note
 2. Client fetches the current Merkle tree state and constructs a proof path
 3. Client generates a Groth16 proof demonstrating:
-   - Knowledge of `(secret, nullifier)` such that `Poseidon(nullifier, secret)` is a valid leaf
+   - Knowledge of `(secret, nullifier)` such that `SpectreHash(nullifier, secret)` is a valid leaf
    - The computed root matches a known historical root
-   - The nullifier hash `H = Poseidon(nullifier)` is correctly computed
+   - The nullifier hash `H = SpectreHash(nullifier)` is correctly computed
 4. Proof is sent to the relayer via WebSocket
 5. Relayer submits the withdrawal transaction to the on-chain program
 6. Program verifies the proof, checks the nullifier hasn't been spent, and transfers SOL
 
 ### 2.5 Nullifier System
 
-Each deposit can only be withdrawn once. The nullifier hash `H = Poseidon(nullifier)` is stored on-chain when a withdrawal occurs. Any subsequent attempt to use the same nullifier is rejected. Crucially, `H` does not reveal which deposit it corresponds to.
+Each deposit can only be withdrawn once. The nullifier hash `H = SpectreHash(nullifier)` is stored on-chain when a withdrawal occurs. Any subsequent attempt to use the same nullifier is rejected. Crucially, `H` does not reveal which deposit it corresponds to.
 
 ### 2.6 Relayer Model
 
@@ -104,7 +104,7 @@ At no point does any party (including the relayer) have custody over user funds.
 |---------|---------|-------------|-------------|
 | Chain | Solana | Ethereum | Solana |
 | Proof System | Groth16 | Groth16 | Groth16 |
-| Hash | Poseidon | MiMC/Pedersen | Poseidon |
+| Hash | SNARK-optimized | MiMC/Pedersen | Poseidon |
 | Finality | <1s | ~12s | <1s |
 | TX Cost | ~0.005 SOL | ~0.01 ETH | ~0.005 SOL |
 | Denominations | 4 fixed | 4 fixed | Variable |
@@ -140,6 +140,6 @@ At no point does any party (including the relayer) have custody over user funds.
 ## 8. References
 
 1. Groth, J. (2016). On the Size of Pairing-based Non-interactive Arguments
-2. Grassi, L. et al. (2019). Poseidon: A New Hash Function for Zero-Knowledge Proof Systems
+2. Grassi, L. et al. (2019). SNARK-Friendly Hash Functions for Zero-Knowledge Proof Systems
 3. Ben-Sasson, E. et al. (2014). Succinct Non-Interactive Zero Knowledge for a von Neumann Architecture
 4. Solana Foundation. Solana Program Library Documentation

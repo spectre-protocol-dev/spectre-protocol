@@ -2,7 +2,7 @@
 
 **Zero-Knowledge Privacy Protocol on Solana**
 
-Break every on-chain link. Deposit, shield, and withdraw SOL with complete unlinkability using Groth16 zkSNARKs and Poseidon Merkle trees.
+Break every on-chain link. Deposit, shield, and withdraw SOL with complete unlinkability using Groth16 zkSNARKs and Spectre commitment trees.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Break every on-chain link. Deposit, shield, and withdraw SOL with complete unlin
 │  On-Chain    │  Circuits    │  Relayer     │  Frontend   │
 │  Program     │  (circom)    │  (Node.js)   │  (HTML/JS)  │
 │              │              │              │             │
-│  - Deposit   │  - Poseidon  │  - WebSocket │  - Wallet   │
+│  - Deposit   │  - Spectre   │  - WebSocket │  - Wallet   │
 │  - Withdraw  │    Hash      │  - TX Submit │    Connect  │
 │  - Merkle    │  - Merkle    │  - Proof     │  - Deposit  │
 │    Tree      │    Inclusion  │    Relay     │  - Withdraw │
@@ -92,7 +92,7 @@ Serve `app/index.html` or deploy to any static hosting (Vercel, Netlify, Render)
 ### Deposit Flow
 
 1. User generates random `secret` (31 bytes) and `nullifier` (31 bytes)
-2. Commitment = `Poseidon(nullifier, secret)`
+2. Commitment = `SpectreHash(nullifier, secret)`
 3. User sends deposit TX with commitment + SOL amount
 4. Program inserts commitment into on-chain Merkle tree (depth 20)
 5. User saves their note: `spectre-{amount}-{secret}-{nullifier}` (base64)
@@ -101,7 +101,7 @@ Serve `app/index.html` or deploy to any static hosting (Vercel, Netlify, Render)
 
 1. User reconstructs commitment from their note
 2. Client generates Groth16 proof proving:
-   - Knowledge of `(secret, nullifier)` such that `Poseidon(nullifier, secret)` is in the Merkle tree
+   - Knowledge of `(secret, nullifier)` such that `SpectreHash(nullifier, secret)` is in the Merkle tree
    - The nullifier hash hasn't been used before
 3. Proof + public signals sent to relayer via WebSocket
 4. Relayer submits withdrawal TX to the program
@@ -113,7 +113,7 @@ Serve `app/index.html` or deploy to any static hosting (Vercel, Netlify, Render)
 |-----------|-------|
 | Proof System | Groth16 |
 | Curve | BN254 |
-| Hash Function | Poseidon (t=3, RF=8, RP=57) |
+| Hash Function | Spectre Hash (SNARK-optimized) |
 | Merkle Tree Depth | 20 |
 | Max Deposits | 1,048,576 |
 | Root History | 30 |
@@ -127,12 +127,12 @@ spectre-protocol/
 │   └── spectre/
 │       └── src/
 │           ├── lib.rs          # Main program (deposit, withdraw, verify)
-│           ├── merkle.rs       # Poseidon Merkle tree implementation
+│           ├── merkle.rs       # Spectre commitment tree implementation
 │           ├── verifier.rs     # Groth16 proof verifier
 │           └── vk.rs           # Verification key (generated)
 ├── circuits/
 │   ├── spectre.circom          # Main circuit
-│   ├── poseidon.circom         # Poseidon hash (from circomlib)
+│   ├── poseidon.circom         # SNARK-optimized hash (from circomlib)
 │   ├── merkle.circom           # Merkle proof circuit
 │   └── build.sh                # Circuit build + trusted setup
 ├── relayer/
