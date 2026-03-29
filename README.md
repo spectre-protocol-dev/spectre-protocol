@@ -132,8 +132,6 @@ spectre-protocol/
 │           └── vk.rs           # Verification key (generated)
 ├── circuits/
 │   ├── spectre.circom          # Main circuit
-│   ├── poseidon.circom         # SNARK-optimized hash (from circomlib)
-│   ├── merkle.circom           # Merkle proof circuit
 │   └── build.sh                # Circuit build + trusted setup
 ├── relayer/
 │   ├── index.ts                # WebSocket relayer server
