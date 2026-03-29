@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPECTRE — Private Transactions on Solana</title>
+<meta name="description" content="Break every on-chain link. Zero-knowledge privacy protocol on Solana. Deposit, shield, withdraw. No trace left behind.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #05060a;
+  --bg-secondary: #0a0c14;
+  --bg-card: #0d0f1a;
+  --bg-card-hover: #111428;
+  --accent: #00ffa3;
+  --accent-dim: #00ffa322;
+  --accent-mid: #00ffa355;
+  --ghost: #8892b0;
+  --ghost-dim: #8892b044;
+  --text-primary: #e6f1ff;
+  --text-secondary: #a8b2d1;
+  --text-dim: #495670;
+  --danger: #ff4757;
+  --warning: #ffa502;
+  --border: #1a1f36;
+  --glow: 0 0 30px #00ffa322, 0 0 60px #00ffa311;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════
+   SCANLINE + CRT OVERLAY
+   ═══════════════════════════════════════ */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 163, 0.015) 2px,
+    rgba(0, 255, 163, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ═══════════════════════════════════════
+   PARTICLE CANVAS
+   ═══════════════════════════════════════ */
+#particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════ */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 1.25rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(5, 6, 10, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+nav.scrolled { background: rgba(5, 6, 10, 0.95); }
+
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-decoration: none;
+  position: relative;
+}
+
+.logo::after {
+  content: '_';
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  list-style: none;
+}
+
+.nav-links a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ghost);
+  text-decoration: none;
+  transition: color 0.3s;
+  position: relative;
+}
+
+.nav-links a:hover { color: var(--accent); }
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 0; height: 1px;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.nav-links a:hover::after { width: 100%; }
+
+.btn-launch {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0.6rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-launch:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  box-shadow: var(--glow);
+}
+
+/* ═══════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════ */
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 8rem 2rem 4rem;
+}
+
+.hero-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+  padding: 0.4rem 1.2rem;
+  margin-bottom: 2rem;
+  display: inline-block;
+  animation: fadeInUp 0.8s ease;
+}
+
+.hero h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 700;
+  letter-spacing: 12px;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+  position: relative;
+  animation: glitchIn 1s ease;
+}
+
+.hero h1 .ghost-text {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  color: var(--accent);
+  opacity: 0;
+  animation: ghostPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ghostPulse {
+  0%, 100% { opacity: 0; transform: translate(0, 0); }
+  25% { opacity: 0.08; transform: translate(-2px, 1px); }
+  50% { opacity: 0; transform: translate(0, 0); }
+  75% { opacity: 0.05; transform: translate(2px, -1px); }
+}
+
+.hero-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(0.85rem, 1.5vw, 1.1rem);
+  color: var(--ghost);
+  max-width: 600px;
+  line-height: 1.8;
+  margin-bottom: 3rem;
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+.hero-sub .highlight {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.5rem;
+  animation: fadeInUp 0.8s ease 0.4s both;
+}
+
+.btn-primary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 1rem 2.5rem;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  box-shadow: var(--glow);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 1rem 2.5rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  border-color: var(--ghost);
+  color: var(--text-primary);
+}
+
+.hero-stats {
+  display: flex;
+  gap: 4rem;
+  margin-top: 5rem;
+  animation: fadeInUp 0.8s ease 0.6s both;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+}
+
+.stat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+/* ═══════════════════════════════════════
+   SECTIONS COMMON
+   ═══════════════════════════════════════ */
+section {
+  position: relative;
+  z-index: 1;
+  padding: 7rem 2rem;
+}
+
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: 2px;
+  margin-bottom: 1rem;
+}
+
+.section-desc {
+  color: var(--ghost);
+  max-width: 550px;
+  font-size: 0.95rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ═══════════════════════════════════════
+   HOW IT WORKS
+   ═══════════════════════════════════════ */
+.how-it-works { background: var(--bg-secondary); }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 4rem;
+}
+
+.step-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 2.5rem 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s;
+}
+
+.step-card:hover {
+  border-color: var(--accent-mid);
+  transform: translateY(-4px);
+}
+
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.step-card:hover::before { opacity: 1; }
+
+.step-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--accent-dim);
+  line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+.step-card h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  margin-bottom: 0.8rem;
+  color: var(--text-primary);
+}
+
+.step-card p {
+  font-size: 0.9rem;
+  color: var(--ghost);
+  line-height: 1.7;
+}
+
+/* ═══════════════════════════════════════
+   FEATURES
+   ═══════════════════════════════════════ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 4rem;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  transition: all 0.3s;
+}
+
+.feature-card:hover {
+  border-color: var(--accent-mid);
+  background: var(--bg-card-hover);
+}
+
+.feature-icon {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+}
+
+.feature-card h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  font-size: 0.85rem;
+  color: var(--ghost);
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════
+   APP SECTION
+   ═══════════════════════════════════════ */
+.app-section {
+  background: var(--bg-secondary);
+}
+
+.app-container {
+  max-width: 520px;
+  margin: 3rem auto 0;
+}
+
+.app-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.app-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-tab {
+  flex: 1;
+  padding: 1rem;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ghost);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.app-tab.active {
+  color: var(--accent);
+  background: var(--bg-card-hover);
+}
+
+.app-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 2px;
+  background: var(--accent);
+}
+
+.app-body {
+  padding: 2rem;
+}
+
+.app-panel { display: none; }
+.app-panel.active { display: block; }
+
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  transition: border-color 0.3s;
+  outline: none;
+}
+
+.input-field:focus { border-color: var(--accent); }
+
+.input-field::placeholder { color: var(--text-dim); }
+
+.amount-presets {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.preset-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--ghost);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.preset-btn:hover, .preset-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.info-row:last-child { border-bottom: none; }
+
+.info-row .label { color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
+.info-row .value { color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+.btn-app {
+  width: 100%;
+  padding: 1rem;
+  margin-top: 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-app:hover {
+  box-shadow: var(--glow);
+}
+
+.btn-app.connect-wallet {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.btn-app.connect-wallet:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.note-display {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-top: 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  word-break: break-all;
+  line-height: 1.6;
+  position: relative;
+  display: none;
+}
+
+.note-display.visible { display: block; }
+
+.note-warning {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--danger);
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pool-info {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.pool-info-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.8rem;
+}
+
+.pool-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.pool-stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pool-stat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+}
+
+/* ═══════════════════════════════════════
+   PROTOCOL / TECH
+   ═══════════════════════════════════════ */
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 4rem;
+}
+
+.tech-item {
+  text-align: center;
+  padding: 2rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: all 0.3s;
+}
+
+.tech-item:hover { border-color: var(--accent-mid); }
+
+.tech-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tech-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════
+   TERMINAL SECTION
+   ═══════════════════════════════════════ */
+.terminal-section { background: var(--bg-secondary); }
+
+.terminal {
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  max-width: 700px;
+  margin: 3rem auto 0;
+  overflow: hidden;
+}
+
+.terminal-header {
+  background: #111428;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ff5f56; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #27c93f; }
+
+.terminal-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-left: 0.5rem;
+}
+
+.terminal-body {
+  padding: 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 2;
+  min-height: 200px;
+}
+
+.terminal-line {
+  opacity: 0;
+  animation: terminalType 0.3s ease forwards;
+}
+
+.terminal-line .prompt { color: var(--accent); }
+.terminal-line .cmd { color: var(--text-primary); }
+.terminal-line .output { color: var(--ghost); }
+.terminal-line .success { color: var(--accent); }
+.terminal-line .hash { color: var(--text-dim); font-size: 0.7rem; }
+
+/* ═══════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════ */
+footer {
+  position: relative;
+  z-index: 1;
+  padding: 4rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.footer-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+.footer-links a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ghost);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.footer-links a:hover { color: var(--accent); }
+
+.footer-copy {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ═══════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glitchIn {
+  0% { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+  30% { opacity: 1; filter: blur(0); }
+  32% { transform: translate(-3px, 20px) skewX(-2deg); }
+  34% { transform: translate(3px, 18px) skewX(2deg); }
+  36% { transform: translate(0, 0) skewX(0); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+
+@keyframes terminalType {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════
+   MOBILE HAMBURGER
+   ═══════════════════════════════════════ */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+
+.hamburger span {
+  width: 24px;
+  height: 2px;
+  background: var(--ghost);
+  transition: all 0.3s;
+}
+
+.hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.hamburger.active span:nth-child(2) { opacity: 0; }
+.hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* ═══════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════ */
+@media (max-width: 900px) {
+  .steps-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .tech-grid { grid-template-columns: repeat(2, 1fr); }
+  .hero-stats { gap: 2rem; flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+
+  .nav-links {
+    position: fixed;
+    top: 0; right: -100%;
+    width: 70%;
+    height: 100vh;
+    background: var(--bg-secondary);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    transition: right 0.4s ease;
+    border-left: 1px solid var(--border);
+  }
+
+  .nav-links.open { right: 0; }
+
+  .hero-actions { flex-direction: column; align-items: center; }
+  .footer-content { flex-direction: column; gap: 2rem; text-align: center; }
+  .footer-links { justify-content: center; }
+  .pool-stats { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle Background -->
+<canvas id="particles"></canvas>
+
+<!-- Navigation -->
+<nav id="navbar">
+  <a href="#" class="logo">SPECTRE</a>
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#protocol">Protocol</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="https://github.com/" target="_blank">GitHub</a></li>
+    <li><a href="#docs">Docs</a></li>
+    <li><a href="#app" class="btn-launch">Launch App</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <span class="hero-badge">Zero-Knowledge Privacy Protocol on Solana</span>
+  <h1>
+    SPECTRE
+    <span class="ghost-text" aria-hidden="true">SPECTRE</span>
+  </h1>
+  <p class="hero-sub">
+    Break every on-chain link. Deposit, shield, and withdraw with
+    <span class="highlight">complete unlinkability</span>.
+    No trace. No footprint. Only <span class="highlight">zero-knowledge proofs</span>.
+  </p>
+  <div class="hero-actions">
+    <a href="#app" class="btn-primary">Launch App</a>
+    <a href="#how" class="btn-secondary">Read Docs</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <span class="stat-value" id="tvlCounter">--</span>
+      <span class="stat-label">Total Value Locked</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="txCounter">--</span>
+      <span class="stat-label">Transactions</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="anonCounter">--</span>
+      <span class="stat-label">Anonymity Set</span>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-it-works" id="how">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">// Protocol Flow</span>
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-desc">Three steps. Complete privacy. Powered by Groth16 zkSNARKs and Poseidon Merkle trees.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card reveal">
+        <div class="step-number">01</div>
+        <h3>Deposit</h3>
+        <p>Deposit SOL into the shielded pool. A cryptographic commitment is generated and added to the on-chain Merkle tree. Your deposit becomes indistinguishable from all others.</p>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-number">02</div>
+        <h3>Shield</h3>
+        <p>Your funds sit in the privacy pool, mixed with all other deposits. A zero-knowledge proof is generated off-chain, proving ownership without revealing which deposit is yours.</p>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-number">03</div>
+        <h3>Withdraw</h3>
+        <p>Withdraw to any address via the relayer. The zkSNARK proof is verified on-chain, confirming validity while maintaining complete sender-recipient unlinkability.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">// Core Features</span>
+      <h2 class="section-title">Built for Shadows</h2>
+      <p class="section-desc">Military-grade privacy infrastructure on the fastest chain.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">zk</div>
+        <div>
+          <h3>Groth16 zkSNARKs</h3>
+          <p>On-chain proof verification using BN254 curve. Proves note ownership and transaction validity without revealing deposit details, amounts, or addresses.</p>
+        </div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">#</div>
+        <div>
+          <h3>Poseidon Merkle Tree</h3>
+          <p>SNARK-friendly hash function with depth-20 incremental Merkle tree supporting up to 1M+ deposits with 33-root history buffer.</p>
+        </div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#8644;</div>
+        <div>
+          <h3>Relayer Network</h3>
+          <p>WebSocket relayer service handles withdrawal transactions, providing sender-recipient unlinkability through decoupled transaction relay.</p>
+        </div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#8709;</div>
+        <div>
+          <h3>Nullifier System</h3>
+          <p>Prevents double-spending by ensuring each deposit can only be withdrawn once. Nullifier hashes are stored on-chain without revealing deposit links.</p>
+        </div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#9889;</div>
+        <div>
+          <h3>Solana Speed</h3>
+          <p>Sub-second finality. Deposits confirm in one block. Withdrawals process through the relayer with minimal latency on the fastest L1.</p>
+        </div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">&#128274;</div>
+        <div>
+          <h3>Non-Custodial</h3>
+          <p>Fully on-chain program. No trusted third party. No KYC. No logs. Only math. Your keys, your privacy, your SOL.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Protocol Tech -->
+<section id="protocol" class="protocol-section">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">// Protocol Specifications</span>
+      <h2 class="section-title">Under the Hood</h2>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-item reveal">
+        <div class="tech-value">Groth16</div>
+        <div class="tech-label">Proof System</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">BN254</div>
+        <div class="tech-label">Elliptic Curve</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">2^20</div>
+        <div class="tech-label">Max Deposits</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">33</div>
+        <div class="tech-label">Root History</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">Poseidon</div>
+        <div class="tech-label">Hash Function</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">Anchor</div>
+        <div class="tech-label">Framework</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">0.15%</div>
+        <div class="tech-label">Relayer Fee</div>
+      </div>
+      <div class="tech-item reveal">
+        <div class="tech-value">&lt;400ms</div>
+        <div class="tech-label">Finality</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Terminal -->
+<section class="terminal-section" id="docs">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">// Quick Start</span>
+      <h2 class="section-title">Ghost Protocol</h2>
+      <p class="section-desc">Deploy your own instance. Fork, build, disappear.</p>
+    </div>
+    <div class="terminal reveal" id="terminal">
+      <div class="terminal-header">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+        <span class="terminal-title">spectre@solana:~</span>
+      </div>
+      <div class="terminal-body" id="terminalBody"></div>
+    </div>
+  </div>
+</section>
+
+<!-- App Section -->
+<section class="app-section" id="app">
+  <div class="container" style="text-align:center;">
+    <div class="reveal">
+      <span class="section-label">// Shielded Transfers</span>
+      <h2 class="section-title">Enter the Void</h2>
+      <p class="section-desc" style="margin:0 auto;">Deposit SOL. Generate your secret note. Withdraw from any wallet. Zero link.</p>
+    </div>
+  </div>
+  <div class="app-container reveal">
+    <div class="pool-info">
+      <div class="pool-info-title">Pool Status</div>
+      <div class="pool-stats">
+        <div>
+          <div class="pool-stat-value">--</div>
+          <div class="pool-stat-label">Pool Balance</div>
+        </div>
+        <div>
+          <div class="pool-stat-value">--</div>
+          <div class="pool-stat-label">Total Deposits</div>
+        </div>
+        <div>
+          <div class="pool-stat-value">--</div>
+          <div class="pool-stat-label">Anonymity Set</div>
+        </div>
+      </div>
+    </div>
+    <div class="app-box">
+      <div class="app-tabs">
+        <button class="app-tab active" data-tab="deposit">Deposit</button>
+        <button class="app-tab" data-tab="withdraw">Withdraw</button>
+      </div>
+
+      <!-- Deposit Panel -->
+      <div class="app-body">
+        <div class="app-panel active" id="panel-deposit">
+          <div class="input-group">
+            <label class="input-label">Amount (SOL)</label>
+            <input type="text" class="input-field" placeholder="0.00" id="depositAmount" readonly value="1">
+            <div class="amount-presets">
+              <button class="preset-btn" data-amount="1">1 SOL</button>
+              <button class="preset-btn" data-amount="5">5 SOL</button>
+              <button class="preset-btn active" data-amount="10">10 SOL</button>
+              <button class="preset-btn" data-amount="100">100 SOL</button>
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-bottom:0.8rem;">
+            <div class="info-row">
+              <span class="label">Protocol Fee</span>
+              <span class="value">0.15%</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Relayer Gas Buffer</span>
+              <span class="value">0.005 SOL</span>
+            </div>
+            <div class="info-row">
+              <span class="label">You Receive</span>
+              <span class="value" id="receiveAmount">~0.995 SOL</span>
+            </div>
+          </div>
+
+          <button class="btn-app connect-wallet" id="connectBtn" onclick="connectWallet()">
+            Connect Wallet
+          </button>
+
+          <div class="note-display" id="noteDisplay">
+            <span id="noteText"></span>
+          </div>
+          <div class="note-warning" id="noteWarning" style="display:none;">
+            &#9888; SAVE THIS NOTE. It is the only way to withdraw your funds. If you lose it, your funds are gone forever.
+          </div>
+        </div>
+
+        <!-- Withdraw Panel -->
+        <div class="app-panel" id="panel-withdraw">
+          <div class="input-group">
+            <label class="input-label">Secret Note</label>
+            <input type="text" class="input-field" placeholder="spectre-0x..." id="withdrawNote">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Recipient Address</label>
+            <input type="text" class="input-field" placeholder="Solana wallet address..." id="recipientAddr">
+          </div>
+
+          <div class="input-group" style="margin-bottom:0;">
+            <div class="info-row">
+              <span class="label">Status</span>
+              <span class="value" style="color: var(--accent);" id="withdrawStatus">Ready</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Relayer</span>
+              <span class="value" id="relayerStatus">Connected</span>
+            </div>
+          </div>
+
+          <button class="btn-app" onclick="initiateWithdraw()">
+            Generate Proof & Withdraw
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-content">
+    <div class="footer-brand">SPECTRE_</div>
+    <ul class="footer-links">
+      <li><a href="https://x.com/" target="_blank">X / Twitter</a></li>
+      <li><a href="https://github.com/" target="_blank">GitHub</a></li>
+      <li><a href="#docs">Docs</a></li>
+      <li><a href="https://discord.gg/" target="_blank">Discord</a></li>
+    </ul>
+  </div>
+  <p class="footer-copy">
+    SPECTRE Protocol &mdash; Zero-Knowledge Privacy on Solana &mdash; All transactions are final and irreversible.
+    <br>Use at your own risk. SPECTRE does not store any user data or private keys.
+  </p>
+</footer>
+
+<script>
+// ═══════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 1.5 + 0.3;
+    this.speedX = (Math.random() - 0.5) * 0.3;
+    this.speedY = (Math.random() - 0.5) * 0.3;
+    this.opacity = Math.random() * 0.4 + 0.1;
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+      this.reset();
+    }
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0, 255, 163, ${this.opacity})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(0, 255, 163, ${0.06 * (1 - dist / 120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawLines();
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+const navbar = document.getElementById('navbar');
+const hamburger = document.getElementById('hamburger');
+const navLinks = document.getElementById('navLinks');
+
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 50);
+});
+
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('active');
+  navLinks.classList.toggle('open');
+});
+
+navLinks.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    hamburger.classList.remove('active');
+    navLinks.classList.remove('open');
+  });
+});
+
+// ═══════════════════════════════════════
+// SCROLL REVEAL
+// ═══════════════════════════════════════
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ═══════════════════════════════════════
+// HERO COUNTER ANIMATION
+// ═══════════════════════════════════════
+function animateCounter(el, end, suffix = '', prefix = '') {
+  const duration = 2000;
+  const start = 0;
+  const startTime = performance.now();
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(start + (end - start) * eased);
+    el.textContent = prefix + current.toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+setTimeout(() => {
+  animateCounter(document.getElementById('tvlCounter'), 12480, ' SOL');
+  animateCounter(document.getElementById('txCounter'), 8293, '+');
+  animateCounter(document.getElementById('anonCounter'), 4712, '');
+}, 800);
+
+// ═══════════════════════════════════════
+// APP TABS
+// ═══════════════════════════════════════
+document.querySelectorAll('.app-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.app-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.app-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════
+// AMOUNT PRESETS
+// ═══════════════════════════════════════
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const amount = parseFloat(btn.dataset.amount);
+    document.getElementById('depositAmount').value = amount;
+    const fee = amount * 0.0015;
+    const gas = 0.005;
+    const receive = (amount - fee - gas).toFixed(4);
+    document.getElementById('receiveAmount').textContent = '~' + receive + ' SOL';
+  });
+});
+
+// ═══════════════════════════════════════
+// WALLET CONNECTION (MOCK)
+// ═══════════════════════════════════════
+let walletConnected = false;
+
+function connectWallet() {
+  const btn = document.getElementById('connectBtn');
+  if (!walletConnected) {
+    btn.textContent = 'Connecting...';
+    btn.disabled = true;
+    setTimeout(() => {
+      walletConnected = true;
+      btn.textContent = 'Deposit SOL';
+      btn.classList.remove('connect-wallet');
+      btn.disabled = false;
+      btn.onclick = depositSOL;
+    }, 1500);
+  }
+}
+
+function depositSOL() {
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = 'Generating Commitment...';
+  btn.disabled = true;
+  setTimeout(() => {
+    const note = 'spectre-0x' + Array.from({length: 64}, () =>
+      '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+    document.getElementById('noteText').textContent = note;
+    document.getElementById('noteDisplay').classList.add('visible');
+    document.getElementById('noteWarning').style.display = 'flex';
+    btn.textContent = 'Deposit Successful';
+    btn.style.background = 'var(--accent)';
+    btn.style.color = 'var(--bg-primary)';
+  }, 2500);
+}
+
+function initiateWithdraw() {
+  const note = document.getElementById('withdrawNote').value;
+  const recipient = document.getElementById('recipientAddr').value;
+  const status = document.getElementById('withdrawStatus');
+
+  if (!note || !recipient) {
+    status.textContent = 'Missing fields';
+    status.style.color = 'var(--danger)';
+    return;
+  }
+
+  status.textContent = 'Generating ZK Proof...';
+  status.style.color = 'var(--warning)';
+
+  setTimeout(() => {
+    status.textContent = 'Submitting to Relayer...';
+    setTimeout(() => {
+      status.textContent = 'Withdrawal Complete';
+      status.style.color = 'var(--accent)';
+    }, 2000);
+  }, 3000);
+}
+
+// ═══════════════════════════════════════
+// TERMINAL ANIMATION
+// ═══════════════════════════════════════
+const terminalLines = [
+  { type: 'prompt', text: '$ git clone https://github.com/spectre-cash/spectre.git' },
+  { type: 'output', text: 'Cloning into \'spectre\'...' },
+  { type: 'output', text: 'Resolving deltas: 100% (247/247), done.' },
+  { type: 'prompt', text: '$ cd spectre && anchor build' },
+  { type: 'output', text: 'Building program: spectre_privacy_pool...' },
+  { type: 'success', text: '  Build successful. Program ID: 6mXQ...YoYB9' },
+  { type: 'prompt', text: '$ anchor deploy --provider.cluster devnet' },
+  { type: 'success', text: '  Program deployed successfully.' },
+  { type: 'prompt', text: '$ node tests/deposit.js --amount 10' },
+  { type: 'output', text: 'Generating commitment...' },
+  { type: 'success', text: '  Deposit confirmed. Commitment added to Merkle tree.' },
+  { type: 'hash', text: '  tx: 4xJ7kF...9mNr2w' },
+  { type: 'prompt', text: '$ _' },
+];
+
+function animateTerminal() {
+  const body = document.getElementById('terminalBody');
+  const termSection = document.getElementById('terminal');
+  let started = false;
+
+  const termObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !started) {
+      started = true;
+      let i = 0;
+      function addLine() {
+        if (i >= terminalLines.length) return;
+        const line = terminalLines[i];
+        const div = document.createElement('div');
+        div.className = 'terminal-line';
+        div.style.animationDelay = '0s';
+
+        if (line.type === 'prompt') {
+          div.innerHTML = `<span class="prompt">$</span> <span class="cmd">${line.text.substring(2)}</span>`;
+        } else {
+          div.innerHTML = `<span class="${line.type}">${line.text}</span>`;
+        }
+        body.appendChild(div);
+        i++;
+        setTimeout(addLine, line.type === 'prompt' ? 600 : 300);
+      }
+      addLine();
+    }
+  }, { threshold: 0.5 });
+
+  termObserver.observe(termSection);
+}
+
+animateTerminal();
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Anchor / Solana
+target/
+.anchor/
+test-ledger/
+*.so
+
+# Circuit build artifacts
+circuits/build/
+*.ptau
+*.zkey
+*.r1cs
+*.sym
+*_js/
+
+# Environment
+.env
+*.pem
+*.json.bak
+
+# Keys (NEVER commit)
+relayer.json
+id.json
+*-keypair.json
+
+# Notes (contain secrets!)
+note_*.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
