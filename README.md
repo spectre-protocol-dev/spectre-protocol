@@ -41,7 +41,7 @@ Break every on-chain link. Deposit, shield, and withdraw SOL with complete unlin
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/YOUR_ORG/spectre-protocol.git
+git clone https://github.com/spectre-protocol-dev/spectre-protocol.git
 cd spectre-protocol
 npm install
 ```
