@@ -4,1514 +4,361 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SPECTRE — Private Transactions on Solana</title>
-<meta name="description" content="Break every on-chain link. Zero-knowledge privacy protocol on Solana. Deposit, shield, withdraw. No trace left behind.">
+<meta name="description" content="Break every on-chain link. Zero-knowledge privacy protocol on Solana.">
+<meta property="og:title" content="SPECTRE Protocol">
+<meta property="og:description" content="Zero-Knowledge Privacy Protocol on Solana. Break every on-chain link.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --bg-primary: #05060a;
-  --bg-secondary: #0a0c14;
-  --bg-card: #0d0f1a;
-  --bg-card-hover: #111428;
-  --accent: #00ffa3;
-  --accent-dim: #00ffa322;
-  --accent-mid: #00ffa355;
-  --ghost: #8892b0;
-  --ghost-dim: #8892b044;
-  --text-primary: #e6f1ff;
-  --text-secondary: #a8b2d1;
-  --text-dim: #495670;
-  --danger: #ff4757;
-  --warning: #ffa502;
-  --border: #1a1f36;
-  --glow: 0 0 30px #00ffa322, 0 0 60px #00ffa311;
-}
-
-html { scroll-behavior: smooth; }
-
-body {
-  font-family: 'Space Grotesk', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  overflow-x: hidden;
-  line-height: 1.6;
-}
-
-/* ═══════════════════════════════════════
-   SCANLINE + CRT OVERLAY
-   ═══════════════════════════════════════ */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 255, 163, 0.015) 2px,
-    rgba(0, 255, 163, 0.015) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* ═══════════════════════════════════════
-   PARTICLE CANVAS
-   ═══════════════════════════════════════ */
-#particles {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* ═══════════════════════════════════════
-   NAVIGATION
-   ═══════════════════════════════════════ */
-nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 1000;
-  padding: 1.25rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(5, 6, 10, 0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  transition: all 0.3s ease;
-}
-
-nav.scrolled { background: rgba(5, 6, 10, 0.95); }
-
-.logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 1.4rem;
-  letter-spacing: 6px;
-  text-transform: uppercase;
-  color: var(--accent);
-  text-decoration: none;
-  position: relative;
-}
-
-.logo::after {
-  content: '_';
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.nav-links {
-  display: flex;
-  gap: 2.5rem;
-  align-items: center;
-  list-style: none;
-}
-
-.nav-links a {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ghost);
-  text-decoration: none;
-  transition: color 0.3s;
-  position: relative;
-}
-
-.nav-links a:hover { color: var(--accent); }
-
-.nav-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px; left: 0;
-  width: 0; height: 1px;
-  background: var(--accent);
-  transition: width 0.3s;
-}
-
-.nav-links a:hover::after { width: 100%; }
-
-.btn-launch {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 0.6rem 1.5rem;
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-}
-
-.btn-launch:hover {
-  background: var(--accent);
-  color: var(--bg-primary);
-  box-shadow: var(--glow);
-}
-
-/* ═══════════════════════════════════════
-   HERO
-   ═══════════════════════════════════════ */
-.hero {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 8rem 2rem 4rem;
-}
-
-.hero-badge {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-mid);
-  padding: 0.4rem 1.2rem;
-  margin-bottom: 2rem;
-  display: inline-block;
-  animation: fadeInUp 0.8s ease;
-}
-
-.hero h1 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(3rem, 8vw, 7rem);
-  font-weight: 700;
-  letter-spacing: 12px;
-  text-transform: uppercase;
-  line-height: 1;
-  margin-bottom: 1.5rem;
-  position: relative;
-  animation: glitchIn 1s ease;
-}
-
-.hero h1 .ghost-text {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  color: var(--accent);
-  opacity: 0;
-  animation: ghostPulse 4s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes ghostPulse {
-  0%, 100% { opacity: 0; transform: translate(0, 0); }
-  25% { opacity: 0.08; transform: translate(-2px, 1px); }
-  50% { opacity: 0; transform: translate(0, 0); }
-  75% { opacity: 0.05; transform: translate(2px, -1px); }
-}
-
-.hero-sub {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: clamp(0.85rem, 1.5vw, 1.1rem);
-  color: var(--ghost);
-  max-width: 600px;
-  line-height: 1.8;
-  margin-bottom: 3rem;
-  animation: fadeInUp 0.8s ease 0.2s both;
-}
-
-.hero-sub .highlight {
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 1.5rem;
-  animation: fadeInUp 0.8s ease 0.4s both;
-}
-
-.btn-primary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  padding: 1rem 2.5rem;
-  background: var(--accent);
-  color: var(--bg-primary);
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s;
-  text-decoration: none;
-}
-
-.btn-primary:hover {
-  box-shadow: var(--glow);
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  padding: 1rem 2.5rem;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-}
-
-.btn-secondary:hover {
-  border-color: var(--ghost);
-  color: var(--text-primary);
-}
-
-.hero-stats {
-  display: flex;
-  gap: 4rem;
-  margin-top: 5rem;
-  animation: fadeInUp 0.8s ease 0.6s both;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  display: block;
-}
-
-.stat-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-top: 0.3rem;
-}
-
-/* ═══════════════════════════════════════
-   SECTIONS COMMON
-   ═══════════════════════════════════════ */
-section {
-  position: relative;
-  z-index: 1;
-  padding: 7rem 2rem;
-}
-
-.section-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 1rem;
-}
-
-.section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
-  font-weight: 600;
-  letter-spacing: 2px;
-  margin-bottom: 1rem;
-}
-
-.section-desc {
-  color: var(--ghost);
-  max-width: 550px;
-  font-size: 0.95rem;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* ═══════════════════════════════════════
-   HOW IT WORKS
-   ═══════════════════════════════════════ */
-.how-it-works { background: var(--bg-secondary); }
-
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  margin-top: 4rem;
-}
-
-.step-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  padding: 2.5rem 2rem;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.4s;
-}
-
-.step-card:hover {
-  border-color: var(--accent-mid);
-  transform: translateY(-4px);
-}
-
-.step-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-
-.step-card:hover::before { opacity: 1; }
-
-.step-number {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--accent-dim);
-  line-height: 1;
-  margin-bottom: 1.5rem;
-}
-
-.step-card h3 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.1rem;
-  letter-spacing: 1px;
-  margin-bottom: 0.8rem;
-  color: var(--text-primary);
-}
-
-.step-card p {
-  font-size: 0.9rem;
-  color: var(--ghost);
-  line-height: 1.7;
-}
-
-/* ═══════════════════════════════════════
-   FEATURES
-   ═══════════════════════════════════════ */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-top: 4rem;
-}
-
-.feature-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  padding: 2rem;
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
-  transition: all 0.3s;
-}
-
-.feature-card:hover {
-  border-color: var(--accent-mid);
-  background: var(--bg-card-hover);
-}
-
-.feature-icon {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.5rem;
-  color: var(--accent);
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-mid);
-}
-
-.feature-card h3 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.95rem;
-  letter-spacing: 1px;
-  margin-bottom: 0.5rem;
-}
-
-.feature-card p {
-  font-size: 0.85rem;
-  color: var(--ghost);
-  line-height: 1.6;
-}
-
-/* ═══════════════════════════════════════
-   APP SECTION
-   ═══════════════════════════════════════ */
-.app-section {
-  background: var(--bg-secondary);
-}
-
-.app-container {
-  max-width: 520px;
-  margin: 3rem auto 0;
-}
-
-.app-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.app-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-}
-
-.app-tab {
-  flex: 1;
-  padding: 1rem;
-  text-align: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--ghost);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.app-tab.active {
-  color: var(--accent);
-  background: var(--bg-card-hover);
-}
-
-.app-tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%; height: 2px;
-  background: var(--accent);
-}
-
-.app-body {
-  padding: 2rem;
-}
-
-.app-panel { display: none; }
-.app-panel.active { display: block; }
-
-.input-group {
-  margin-bottom: 1.5rem;
-}
-
-.input-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.input-field {
-  width: 100%;
-  padding: 0.9rem 1rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  transition: border-color 0.3s;
-  outline: none;
-}
-
-.input-field:focus { border-color: var(--accent); }
-
-.input-field::placeholder { color: var(--text-dim); }
-
-.amount-presets {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.preset-btn {
-  flex: 1;
-  padding: 0.5rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  color: var(--ghost);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-}
-
-.preset-btn:hover, .preset-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.8rem;
-}
-
-.info-row:last-child { border-bottom: none; }
-
-.info-row .label { color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
-.info-row .value { color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
-
-.btn-app {
-  width: 100%;
-  padding: 1rem;
-  margin-top: 1.5rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  background: var(--accent);
-  color: var(--bg-primary);
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s;
-}
-
-.btn-app:hover {
-  box-shadow: var(--glow);
-}
-
-.btn-app.connect-wallet {
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-}
-
-.btn-app.connect-wallet:hover {
-  background: var(--accent);
-  color: var(--bg-primary);
-}
-
-.note-display {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  padding: 1rem;
-  margin-top: 1rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  color: var(--accent);
-  word-break: break-all;
-  line-height: 1.6;
-  position: relative;
-  display: none;
-}
-
-.note-display.visible { display: block; }
-
-.note-warning {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  color: var(--danger);
-  margin-top: 0.8rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.pool-info {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  padding: 1.2rem;
-  margin-bottom: 1.5rem;
-}
-
-.pool-info-title {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 0.8rem;
-}
-
-.pool-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.pool-stat-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1rem;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.pool-stat-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-top: 0.2rem;
-}
-
-/* ═══════════════════════════════════════
-   PROTOCOL / TECH
-   ═══════════════════════════════════════ */
-.tech-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  margin-top: 4rem;
-}
-
-.tech-item {
-  text-align: center;
-  padding: 2rem 1rem;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  transition: all 0.3s;
-}
-
-.tech-item:hover { border-color: var(--accent-mid); }
-
-.tech-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  color: var(--accent);
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.tech-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-/* ═══════════════════════════════════════
-   TERMINAL SECTION
-   ═══════════════════════════════════════ */
-.terminal-section { background: var(--bg-secondary); }
-
-.terminal {
-  background: #0c0e16;
-  border: 1px solid var(--border);
-  max-width: 700px;
-  margin: 3rem auto 0;
-  overflow: hidden;
-}
-
-.terminal-header {
-  background: #111428;
-  padding: 0.8rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.terminal-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-}
-
-.terminal-dot.red { background: #ff5f56; }
-.terminal-dot.yellow { background: #ffbd2e; }
-.terminal-dot.green { background: #27c93f; }
-
-.terminal-title {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  margin-left: 0.5rem;
-}
-
-.terminal-body {
-  padding: 1.5rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  line-height: 2;
-  min-height: 200px;
-}
-
-.terminal-line {
-  opacity: 0;
-  animation: terminalType 0.3s ease forwards;
-}
-
-.terminal-line .prompt { color: var(--accent); }
-.terminal-line .cmd { color: var(--text-primary); }
-.terminal-line .output { color: var(--ghost); }
-.terminal-line .success { color: var(--accent); }
-.terminal-line .hash { color: var(--text-dim); font-size: 0.7rem; }
-
-/* ═══════════════════════════════════════
-   FOOTER
-   ═══════════════════════════════════════ */
-footer {
-  position: relative;
-  z-index: 1;
-  padding: 4rem 2rem;
-  border-top: 1px solid var(--border);
-  background: var(--bg-primary);
-}
-
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.footer-brand {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1rem;
-  letter-spacing: 4px;
-  color: var(--accent);
-}
-
-.footer-links {
-  display: flex;
-  gap: 2rem;
-  list-style: none;
-}
-
-.footer-links a {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ghost);
-  text-decoration: none;
-  transition: color 0.3s;
-}
-
-.footer-links a:hover { color: var(--accent); }
-
-.footer-copy {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  text-align: center;
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ═══════════════════════════════════════
-   ANIMATIONS
-   ═══════════════════════════════════════ */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes glitchIn {
-  0% { opacity: 0; transform: translateY(20px); filter: blur(10px); }
-  30% { opacity: 1; filter: blur(0); }
-  32% { transform: translate(-3px, 20px) skewX(-2deg); }
-  34% { transform: translate(3px, 18px) skewX(2deg); }
-  36% { transform: translate(0, 0) skewX(0); }
-  100% { opacity: 1; transform: translate(0, 0); }
-}
-
-@keyframes terminalType {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Scroll reveal */
-.reveal {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ═══════════════════════════════════════
-   MOBILE HAMBURGER
-   ═══════════════════════════════════════ */
-.hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 4px;
-}
-
-.hamburger span {
-  width: 24px;
-  height: 2px;
-  background: var(--ghost);
-  transition: all 0.3s;
-}
-
-.hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
-.hamburger.active span:nth-child(2) { opacity: 0; }
-.hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
-
-/* ═══════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════ */
-@media (max-width: 900px) {
-  .steps-grid { grid-template-columns: 1fr; }
-  .features-grid { grid-template-columns: 1fr; }
-  .tech-grid { grid-template-columns: repeat(2, 1fr); }
-  .hero-stats { gap: 2rem; flex-wrap: wrap; justify-content: center; }
-}
-
-@media (max-width: 768px) {
-  .hamburger { display: flex; }
-
-  .nav-links {
-    position: fixed;
-    top: 0; right: -100%;
-    width: 70%;
-    height: 100vh;
-    background: var(--bg-secondary);
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 2rem;
-    transition: right 0.4s ease;
-    border-left: 1px solid var(--border);
-  }
-
-  .nav-links.open { right: 0; }
-
-  .hero-actions { flex-direction: column; align-items: center; }
-  .footer-content { flex-direction: column; gap: 2rem; text-align: center; }
-  .footer-links { justify-content: center; }
-  .pool-stats { grid-template-columns: 1fr; }
-}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#030408;--bg1:#05070d;--bg2:#080b16;--bgc:#0b0e1c;--bgch:#0f1328;--ac:#00ffa3;--acd:#00ffa318;--acm:#00ffa344;--ghost:#7a8599;--t1:#e8edf5;--t2:#a0aec0;--td:#4a5568;--red:#ff4757;--warn:#ffc107;--brd:#151b30;--glow:0 0 30px #00ffa322,0 0 60px #00ffa311}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;line-height:1.6}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,163,.012) 2px,rgba(0,255,163,.012) 4px);pointer-events:none;z-index:9999}
+#void{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;background:rgba(3,4,8,.88);backdrop-filter:blur(24px);border-bottom:1px solid var(--brd)}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.3rem;letter-spacing:8px;text-transform:uppercase;color:var(--ac);text-decoration:none}
+.logo::after{content:'_';animation:blink 1s infinite}
+@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}
+.nav-links{display:flex;gap:2rem;align-items:center;list-style:none}
+.nav-links a{font-family:'IBM Plex Mono',monospace;font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--ghost);text-decoration:none;transition:color .3s}
+.nav-links a:hover{color:var(--ac)}
+.btn-nav{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:2px;text-transform:uppercase;padding:.55rem 1.4rem;background:transparent;border:1px solid var(--ac);color:var(--ac);cursor:pointer;transition:all .3s;text-decoration:none}
+.btn-nav:hover{background:var(--ac);color:var(--bg);box-shadow:0 0 20px #00ffa318}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+.hamburger span{width:22px;height:2px;background:var(--ghost);transition:all .3s}
+
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8rem 2rem 4rem}
+.hero-badge{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:5px;text-transform:uppercase;color:var(--ac);background:var(--acd);border:1px solid var(--acm);padding:.35rem 1.2rem;margin-bottom:2.5rem;animation:fadeUp .8s ease}
+.hero h1{font-family:'JetBrains Mono',monospace;font-size:clamp(3.2rem,9vw,8rem);font-weight:700;letter-spacing:14px;text-transform:uppercase;line-height:.95;margin-bottom:1.5rem;background:linear-gradient(135deg,var(--t1) 0%,var(--ac) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:glitchIn 1.2s ease}
+.hero-desc{font-size:clamp(.9rem,1.5vw,1.1rem);color:var(--ghost);max-width:580px;line-height:1.8;margin-bottom:3rem;animation:fadeUp .8s ease .2s both}
+.hero-desc .hl{color:var(--ac);font-weight:500}
+.hero-actions{display:flex;gap:1.2rem;animation:fadeUp .8s ease .4s both}
+.btn-primary{font-family:'JetBrains Mono',monospace;font-size:.85rem;letter-spacing:3px;text-transform:uppercase;padding:.95rem 2.5rem;background:var(--ac);color:var(--bg);border:none;cursor:pointer;font-weight:600;transition:all .3s;text-decoration:none}
+.btn-primary:hover{box-shadow:var(--glow);transform:translateY(-2px)}
+.btn-ghost{font-family:'JetBrains Mono',monospace;font-size:.85rem;letter-spacing:3px;text-transform:uppercase;padding:.95rem 2.5rem;background:transparent;color:var(--t2);border:1px solid var(--brd);cursor:pointer;transition:all .3s;text-decoration:none}
+.btn-ghost:hover{border-color:var(--ghost);color:var(--t1)}
+.hero-metrics{display:flex;gap:4rem;margin-top:5rem;animation:fadeUp .8s ease .6s both}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:700;color:var(--ac);display:block}
+.metric-lbl{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);margin-top:.3rem}
+
+section{position:relative;z-index:1;padding:7rem 2rem}
+.container{max-width:1200px;margin:0 auto}
+.sec-label{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:5px;text-transform:uppercase;color:var(--ac);margin-bottom:.8rem}
+.sec-title{font-family:'JetBrains Mono',monospace;font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:600;letter-spacing:2px;margin-bottom:.8rem}
+.sec-desc{color:var(--ghost);max-width:540px;font-size:.95rem}
+.reveal{opacity:0;transform:translateY(35px);transition:all .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+.how{background:var(--bg2)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3.5rem}
+.step{background:var(--bgc);border:1px solid var(--brd);padding:2.2rem 1.8rem;position:relative;overflow:hidden;transition:all .4s}
+.step:hover{border-color:var(--acm);transform:translateY(-3px)}
+.step::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0;transition:opacity .4s}
+.step:hover::before{opacity:1}
+.step-n{font-family:'JetBrains Mono',monospace;font-size:2.8rem;font-weight:700;color:var(--acd);line-height:1;margin-bottom:1.2rem}
+.step h3{font-family:'JetBrains Mono',monospace;font-size:1.05rem;letter-spacing:1px;margin-bottom:.6rem}
+.step p{font-size:.88rem;color:var(--ghost);line-height:1.7}
+
+.feats{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem;margin-top:3.5rem}
+.feat{background:var(--bgc);border:1px solid var(--brd);padding:1.8rem;display:flex;gap:1.3rem;align-items:flex-start;transition:all .3s}
+.feat:hover{border-color:var(--acm);background:var(--bgch)}
+.feat-icon{font-family:'JetBrains Mono',monospace;font-size:1.3rem;color:var(--ac);width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--acd);border:1px solid var(--acm)}
+.feat h3{font-family:'JetBrains Mono',monospace;font-size:.9rem;letter-spacing:1px;margin-bottom:.4rem}
+.feat p{font-size:.82rem;color:var(--ghost);line-height:1.6}
+
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;margin-top:3.5rem}
+.spec{text-align:center;padding:1.8rem 1rem;border:1px solid var(--brd);background:var(--bgc);transition:all .3s}
+.spec:hover{border-color:var(--acm)}
+.spec-val{font-family:'JetBrains Mono',monospace;font-size:.88rem;color:var(--ac);font-weight:600;margin-bottom:.4rem}
+.spec-lbl{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--td);letter-spacing:1px;text-transform:uppercase}
+
+.token-section{background:var(--bg2)}
+.token-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:3.5rem;align-items:start}
+.token-info h3{font-family:'JetBrains Mono',monospace;font-size:1.4rem;margin-bottom:1.2rem}
+.token-info h3 span{color:var(--ac)}
+.token-utility{list-style:none;padding:0}
+.token-utility li{padding:1rem 0;border-bottom:1px solid var(--brd);display:flex;gap:1rem;align-items:flex-start}
+.token-utility li:last-child{border-bottom:none}
+.tu-icon{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--ac);width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--acd);border:1px solid var(--acm);margin-top:2px}
+.tu-title{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:500;margin-bottom:.2rem}
+.tu-desc{font-size:.8rem;color:var(--ghost);line-height:1.5}
+
+.tbox{background:var(--bgc);border:1px solid var(--brd);padding:2rem;position:relative;overflow:hidden}
+.tbox::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,var(--ac),#7b61ff,#0a84ff)}
+.tbox-title{font-family:'JetBrains Mono',monospace;font-size:.95rem;letter-spacing:2px;margin-bottom:1.5rem}
+.trow{display:flex;justify-content:space-between;padding:.7rem 0;border-bottom:1px solid var(--brd);font-size:.82rem}
+.trow:last-child{border-bottom:none}
+.trow .tl2{color:var(--ghost);font-family:'IBM Plex Mono',monospace}
+.trow .tv{color:var(--t1);font-family:'JetBrains Mono',monospace;font-weight:500}
+.trow .tv.ac{color:var(--ac)}
+.tca{margin-top:1.5rem;background:var(--bg1);border:1px solid var(--brd);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center}
+.tca-label{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--td)}
+.tca-val{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);word-break:break-all}
+.tca-copy{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:1px;text-transform:uppercase;padding:.3rem .6rem;background:var(--acd);border:1px solid var(--acm);color:var(--ac);cursor:pointer;transition:all .3s}
+.tca-copy:hover{background:var(--ac);color:var(--bg)}
+
+.app-section{background:var(--bg2)}
+.app-wrap{max-width:520px;margin:3rem auto 0}
+.pool-bar{background:var(--bgc);border:1px solid var(--brd);padding:1rem 1.2rem;margin-bottom:1rem}
+.pool-bar-title{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);margin-bottom:.6rem}
+.pool-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.pv{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--ac);font-weight:600}
+.pl{font-family:'IBM Plex Mono',monospace;font-size:.55rem;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-top:.15rem}
+.app-box{background:var(--bgc);border:1px solid var(--brd);overflow:hidden}
+.app-tabs{display:flex;border-bottom:1px solid var(--brd)}
+.app-tab{flex:1;padding:.9rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:3px;text-transform:uppercase;color:var(--ghost);background:transparent;border:none;cursor:pointer;transition:all .3s;position:relative}
+.app-tab.active{color:var(--ac);background:var(--bgch)}
+.app-tab.active::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:2px;background:var(--ac)}
+.app-body{padding:1.8rem}
+.app-panel{display:none}.app-panel.active{display:block}
+.ig{margin-bottom:1.2rem}
+.il{font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--td);margin-bottom:.4rem;display:block}
+.inp{width:100%;padding:.85rem 1rem;background:var(--bg1);border:1px solid var(--brd);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:.88rem;transition:border-color .3s;outline:none}
+.inp:focus{border-color:var(--ac)}.inp::placeholder{color:var(--td)}
+.presets{display:flex;gap:.4rem;margin-top:.4rem}
+.preset{flex:1;padding:.45rem;text-align:center;background:var(--bg1);border:1px solid var(--brd);color:var(--ghost);font-family:'JetBrains Mono',monospace;font-size:.72rem;cursor:pointer;transition:all .3s}
+.preset:hover,.preset.active{border-color:var(--ac);color:var(--ac);background:var(--acd)}
+.fr{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--brd);font-size:.78rem}
+.fr:last-child{border-bottom:none}
+.fr .fl{color:var(--td);font-family:'IBM Plex Mono',monospace}
+.fr .fv{color:var(--t2);font-family:'JetBrains Mono',monospace}
+.btn-app{width:100%;padding:.95rem;margin-top:1.2rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;letter-spacing:3px;text-transform:uppercase;background:var(--ac);color:var(--bg);border:none;cursor:pointer;font-weight:600;transition:all .3s}
+.btn-app:hover{box-shadow:var(--glow)}
+.btn-app.outline{background:transparent;border:1px solid var(--ac);color:var(--ac)}
+.btn-app.outline:hover{background:var(--ac);color:var(--bg)}
+.note-out{background:var(--bg1);border:1px solid var(--brd);padding:.9rem;margin-top:.8rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--ac);word-break:break-all;line-height:1.6;display:none}
+.note-out.show{display:block}
+.note-warn{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--red);margin-top:.6rem;display:none;align-items:center;gap:.4rem}
+.note-warn.show{display:flex}
+
+.term-section{background:var(--bg1)}
+.term{background:#060810;border:1px solid var(--brd);max-width:680px;margin:3rem auto 0;overflow:hidden}
+.term-bar{background:#0c1020;padding:.7rem 1rem;display:flex;align-items:center;gap:.4rem;border-bottom:1px solid var(--brd)}
+.td2{width:9px;height:9px;border-radius:50%}.td2.r{background:#ff5f56}.td2.y{background:#ffbd2e}.td2.g{background:#27c93f}
+.term-lbl{font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--td);letter-spacing:1px;margin-left:.5rem}
+.term-body{padding:1.3rem;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:2;min-height:180px}
+.tline{opacity:0;animation:termFade .3s ease forwards}
+.tline .pr{color:var(--ac)}.tline .cm{color:var(--t1)}.tline .out{color:var(--ghost)}.tline .ok{color:var(--ac)}.tline .dim{color:var(--td);font-size:.7rem}
+
+.roadmap-section{background:var(--bg2)}
+.rm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;margin-top:3.5rem}
+.rm-phase{background:var(--bgc);border:1px solid var(--brd);padding:1.8rem 1.5rem;position:relative;transition:all .3s}
+.rm-phase:hover{border-color:var(--acm)}
+.rm-phase.current{border-color:var(--acm)}
+.rm-phase.current::before{content:'CURRENT';position:absolute;top:-.5rem;right:1rem;font-family:'IBM Plex Mono',monospace;font-size:.55rem;letter-spacing:2px;color:var(--bg);background:var(--ac);padding:.15rem .5rem}
+.rm-label{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--ac);margin-bottom:.6rem}
+.rm-title{font-family:'JetBrains Mono',monospace;font-size:.95rem;margin-bottom:.8rem;font-weight:500}
+.rm-items{list-style:none;padding:0}
+.rm-items li{font-size:.78rem;color:var(--ghost);padding:.25rem 0;padding-left:1rem;position:relative}
+.rm-items li::before{content:'>';position:absolute;left:0;color:var(--acm);font-family:'JetBrains Mono',monospace}
+
+footer{position:relative;z-index:1;padding:3.5rem 2rem;border-top:1px solid var(--brd);background:var(--bg)}
+.footer-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.footer-brand{font-family:'JetBrains Mono',monospace;font-size:.95rem;letter-spacing:4px;color:var(--ac)}
+.footer-links{display:flex;gap:2rem;list-style:none}
+.footer-links a{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--ghost);text-decoration:none;transition:color .3s}
+.footer-links a:hover{color:var(--ac)}
+.footer-copy{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--td);text-align:center;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--brd);max-width:1200px;margin-left:auto;margin-right:auto}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glitchIn{0%{opacity:0;transform:translateY(15px);filter:blur(8px)}30%{opacity:1;filter:blur(0)}32%{transform:translate(-2px,15px) skewX(-1.5deg)}34%{transform:translate(2px,13px) skewX(1.5deg)}36%{transform:translate(0,0) skewX(0)}100%{opacity:1;transform:translate(0,0)}}
+@keyframes termFade{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+
+@media(max-width:900px){.steps,.rm-grid{grid-template-columns:1fr}.feats{grid-template-columns:1fr}.specs{grid-template-columns:repeat(2,1fr)}.token-grid{grid-template-columns:1fr}.hero-metrics{gap:2rem;flex-wrap:wrap;justify-content:center}}
+@media(max-width:768px){.hamburger{display:flex}.nav-links{position:fixed;top:0;right:-100%;width:70%;height:100vh;background:var(--bg2);flex-direction:column;justify-content:center;align-items:center;gap:2rem;transition:right .4s;border-left:1px solid var(--brd);z-index:1001}.nav-links.open{right:0}.hero-actions{flex-direction:column;align-items:center}.footer-inner{flex-direction:column;gap:1.5rem;text-align:center}.footer-links{justify-content:center}.pool-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<canvas id="void"></canvas>
 
-<!-- Particle Background -->
-<canvas id="particles"></canvas>
-
-<!-- Navigation -->
-<nav id="navbar">
+<nav>
   <a href="#" class="logo">SPECTRE</a>
-  <button class="hamburger" id="hamburger" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
+  <button class="hamburger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
   <ul class="nav-links" id="navLinks">
     <li><a href="#protocol">Protocol</a></li>
     <li><a href="#how">How It Works</a></li>
-    <li><a href="#features">Features</a></li>
-    <li><a href="https://github.com/" target="_blank">GitHub</a></li>
+    <li><a href="#token">Token</a></li>
+    <li><a href="https://github.com/spectre-protocol-dev/spectre-protocol" target="_blank">GitHub</a></li>
     <li><a href="#docs">Docs</a></li>
-    <li><a href="#app" class="btn-launch">Launch App</a></li>
+    <li><a href="#app" class="btn-nav">Launch App</a></li>
   </ul>
 </nav>
 
-<!-- Hero -->
 <section class="hero">
   <span class="hero-badge">Zero-Knowledge Privacy Protocol on Solana</span>
-  <h1>
-    SPECTRE
-    <span class="ghost-text" aria-hidden="true">SPECTRE</span>
-  </h1>
-  <p class="hero-sub">
-    Break every on-chain link. Deposit, shield, and withdraw with
-    <span class="highlight">complete unlinkability</span>.
-    No trace. No footprint. Only <span class="highlight">zero-knowledge proofs</span>.
-  </p>
+  <h1>SPECTRE</h1>
+  <p class="hero-desc">Break every on-chain link. Deposit, shield, and withdraw with <span class="hl">complete unlinkability</span>. No trace. No footprint. Only <span class="hl">zero-knowledge proofs</span>.</p>
   <div class="hero-actions">
     <a href="#app" class="btn-primary">Launch App</a>
-    <a href="#how" class="btn-secondary">Read Docs</a>
+    <a href="https://github.com/spectre-protocol-dev/spectre-protocol" target="_blank" class="btn-ghost">View Source</a>
   </div>
-  <div class="hero-stats">
-    <div class="stat">
-      <span class="stat-value" id="tvlCounter">--</span>
-      <span class="stat-label">Total Value Locked</span>
-    </div>
-    <div class="stat">
-      <span class="stat-value" id="txCounter">--</span>
-      <span class="stat-label">Transactions</span>
-    </div>
-    <div class="stat">
-      <span class="stat-value" id="anonCounter">--</span>
-      <span class="stat-label">Anonymity Set</span>
-    </div>
+  <div class="hero-metrics">
+    <div><span class="metric-val" id="mTVL">--</span><span class="metric-lbl">Total Shielded</span></div>
+    <div><span class="metric-val" id="mTX">--</span><span class="metric-lbl">Transactions</span></div>
+    <div><span class="metric-val" id="mAS">--</span><span class="metric-lbl">Anonymity Set</span></div>
   </div>
 </section>
 
-<!-- How It Works -->
-<section class="how-it-works" id="how">
+<section class="how" id="how">
   <div class="container">
-    <div class="reveal">
-      <span class="section-label">// Protocol Flow</span>
-      <h2 class="section-title">How It Works</h2>
-      <p class="section-desc">Three steps. Complete privacy. Powered by Groth16 zkSNARKs and Poseidon Merkle trees.</p>
-    </div>
-    <div class="steps-grid">
-      <div class="step-card reveal">
-        <div class="step-number">01</div>
-        <h3>Deposit</h3>
-        <p>Deposit SOL into the shielded pool. A cryptographic commitment is generated and added to the on-chain Merkle tree. Your deposit becomes indistinguishable from all others.</p>
-      </div>
-      <div class="step-card reveal">
-        <div class="step-number">02</div>
-        <h3>Shield</h3>
-        <p>Your funds sit in the privacy pool, mixed with all other deposits. A zero-knowledge proof is generated off-chain, proving ownership without revealing which deposit is yours.</p>
-      </div>
-      <div class="step-card reveal">
-        <div class="step-number">03</div>
-        <h3>Withdraw</h3>
-        <p>Withdraw to any address via the relayer. The zkSNARK proof is verified on-chain, confirming validity while maintaining complete sender-recipient unlinkability.</p>
-      </div>
+    <div class="reveal"><span class="sec-label">// Protocol Flow</span><h2 class="sec-title">How It Works</h2><p class="sec-desc">Three steps to complete privacy. Powered by Groth16 zkSNARKs and Spectre commitment trees.</p></div>
+    <div class="steps">
+      <div class="step reveal"><div class="step-n">01</div><h3>Deposit</h3><p>Deposit SOL into the shielded pool. A cryptographic commitment is generated and anchored to the on-chain commitment tree. Your deposit becomes indistinguishable from all others.</p></div>
+      <div class="step reveal"><div class="step-n">02</div><h3>Shield</h3><p>Your funds rest in the privacy pool alongside all other deposits. A zero-knowledge proof is generated client-side, proving ownership without revealing which deposit belongs to you.</p></div>
+      <div class="step reveal"><div class="step-n">03</div><h3>Withdraw</h3><p>Withdraw to any fresh address via the relayer network. The zkSNARK proof is verified on-chain, confirming validity while maintaining complete sender-recipient unlinkability.</p></div>
     </div>
   </div>
 </section>
 
-<!-- Features -->
-<section class="features" id="features">
+<section id="protocol">
   <div class="container">
-    <div class="reveal">
-      <span class="section-label">// Core Features</span>
-      <h2 class="section-title">Built for Shadows</h2>
-      <p class="section-desc">Military-grade privacy infrastructure on the fastest chain.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card reveal">
-        <div class="feature-icon">zk</div>
-        <div>
-          <h3>Groth16 zkSNARKs</h3>
-          <p>On-chain proof verification using BN254 curve. Proves note ownership and transaction validity without revealing deposit details, amounts, or addresses.</p>
-        </div>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">#</div>
-        <div>
-          <h3>Poseidon Merkle Tree</h3>
-          <p>SNARK-friendly hash function with depth-20 incremental Merkle tree supporting up to 1M+ deposits with 33-root history buffer.</p>
-        </div>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#8644;</div>
-        <div>
-          <h3>Relayer Network</h3>
-          <p>WebSocket relayer service handles withdrawal transactions, providing sender-recipient unlinkability through decoupled transaction relay.</p>
-        </div>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#8709;</div>
-        <div>
-          <h3>Nullifier System</h3>
-          <p>Prevents double-spending by ensuring each deposit can only be withdrawn once. Nullifier hashes are stored on-chain without revealing deposit links.</p>
-        </div>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#9889;</div>
-        <div>
-          <h3>Solana Speed</h3>
-          <p>Sub-second finality. Deposits confirm in one block. Withdrawals process through the relayer with minimal latency on the fastest L1.</p>
-        </div>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128274;</div>
-        <div>
-          <h3>Non-Custodial</h3>
-          <p>Fully on-chain program. No trusted third party. No KYC. No logs. Only math. Your keys, your privacy, your SOL.</p>
-        </div>
-      </div>
+    <div class="reveal"><span class="sec-label">// Core Architecture</span><h2 class="sec-title">Built for the Void</h2><p class="sec-desc">Military-grade privacy infrastructure on the fastest L1.</p></div>
+    <div class="feats">
+      <div class="feat reveal"><div class="feat-icon">zk</div><div><h3>Groth16 Proofs</h3><p>On-chain proof verification using BN254 elliptic curve. Proves note ownership and transaction validity without revealing any deposit details or addresses.</p></div></div>
+      <div class="feat reveal"><div class="feat-icon">#</div><div><h3>Spectre Commitment Tree</h3><p>SNARK-optimized incremental hash tree with depth 20, supporting over 1 million deposits with a rolling 30-root history buffer for async withdrawals.</p></div></div>
+      <div class="feat reveal"><div class="feat-icon">&#8644;</div><div><h3>Relayer Network</h3><p>WebSocket relay infrastructure handles withdrawal transactions on behalf of users, providing sender-recipient unlinkability through decoupled transaction submission.</p></div></div>
+      <div class="feat reveal"><div class="feat-icon">&#8709;</div><div><h3>Nullifier Registry</h3><p>On-chain nullifier tracking prevents double-spending while maintaining zero-knowledge. Each deposit can only be withdrawn once, without revealing deposit associations.</p></div></div>
+      <div class="feat reveal"><div class="feat-icon">&#9889;</div><div><h3>Solana Native</h3><p>Sub-second finality. Deposits confirm in one block. Built natively on Solana with Anchor framework for maximum performance and minimal transaction costs.</p></div></div>
+      <div class="feat reveal"><div class="feat-icon">&#128274;</div><div><h3>Non-Custodial</h3><p>Fully on-chain program controlled by PDAs. No trusted third party. No KYC. No logs. Your keys, your privacy, your SOL.</p></div></div>
     </div>
   </div>
 </section>
 
-<!-- Protocol Tech -->
-<section id="protocol" class="protocol-section">
+<section style="background:var(--bg2)">
   <div class="container">
-    <div class="reveal">
-      <span class="section-label">// Protocol Specifications</span>
-      <h2 class="section-title">Under the Hood</h2>
-    </div>
-    <div class="tech-grid">
-      <div class="tech-item reveal">
-        <div class="tech-value">Groth16</div>
-        <div class="tech-label">Proof System</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">BN254</div>
-        <div class="tech-label">Elliptic Curve</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">2^20</div>
-        <div class="tech-label">Max Deposits</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">33</div>
-        <div class="tech-label">Root History</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">Poseidon</div>
-        <div class="tech-label">Hash Function</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">Anchor</div>
-        <div class="tech-label">Framework</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">0.15%</div>
-        <div class="tech-label">Relayer Fee</div>
-      </div>
-      <div class="tech-item reveal">
-        <div class="tech-value">&lt;400ms</div>
-        <div class="tech-label">Finality</div>
-      </div>
+    <div class="reveal"><span class="sec-label">// Technical Specifications</span><h2 class="sec-title">Under the Hood</h2></div>
+    <div class="specs">
+      <div class="spec reveal"><div class="spec-val">Groth16</div><div class="spec-lbl">Proof System</div></div>
+      <div class="spec reveal"><div class="spec-val">BN254</div><div class="spec-lbl">Elliptic Curve</div></div>
+      <div class="spec reveal"><div class="spec-val">2^20</div><div class="spec-lbl">Max Deposits</div></div>
+      <div class="spec reveal"><div class="spec-val">30</div><div class="spec-lbl">Root History</div></div>
+      <div class="spec reveal"><div class="spec-val">SNARK-opt</div><div class="spec-lbl">Hash Function</div></div>
+      <div class="spec reveal"><div class="spec-val">Anchor</div><div class="spec-lbl">Framework</div></div>
+      <div class="spec reveal"><div class="spec-val">0.15%</div><div class="spec-lbl">Relayer Fee</div></div>
+      <div class="spec reveal"><div class="spec-val">&lt;400ms</div><div class="spec-lbl">Finality</div></div>
     </div>
   </div>
 </section>
 
-<!-- Terminal -->
-<section class="terminal-section" id="docs">
+<section class="token-section" id="token">
   <div class="container">
-    <div class="reveal">
-      <span class="section-label">// Quick Start</span>
-      <h2 class="section-title">Ghost Protocol</h2>
-      <p class="section-desc">Deploy your own instance. Fork, build, disappear.</p>
-    </div>
-    <div class="terminal reveal" id="terminal">
-      <div class="terminal-header">
-        <div class="terminal-dot red"></div>
-        <div class="terminal-dot yellow"></div>
-        <div class="terminal-dot green"></div>
-        <span class="terminal-title">spectre@solana:~</span>
+    <div class="reveal"><span class="sec-label">// $SPECTRE Token</span><h2 class="sec-title">The Ghost Economy</h2><p class="sec-desc">$SPECTRE aligns incentives across the protocol. Stake, govern, and earn from the privacy infrastructure you help secure.</p></div>
+    <div class="token-grid">
+      <div class="token-info reveal">
+        <h3>Why <span>$SPECTRE</span>?</h3>
+        <ul class="token-utility">
+          <li><div class="tu-icon">S</div><div><div class="tu-title">Relayer Staking</div><div class="tu-desc">Stake $SPECTRE to operate a relayer node. Earn withdrawal fees (0.15%) from every private transaction you relay. Higher stake = higher priority.</div></div></li>
+          <li><div class="tu-icon">%</div><div><div class="tu-title">Fee Reduction</div><div class="tu-desc">Hold $SPECTRE to reduce protocol fees on your withdrawals. Tiered system: hold more, pay less. Maximum reduction at 10,000 $SPECTRE.</div></div></li>
+          <li><div class="tu-icon">&#9878;</div><div><div class="tu-title">Protocol Governance</div><div class="tu-desc">Vote on protocol parameters: supported denominations, fee structure, relayer requirements, new chain deployments, and treasury allocation.</div></div></li>
+          <li><div class="tu-icon">&#9734;</div><div><div class="tu-title">Privacy Mining</div><div class="tu-desc">Earn $SPECTRE rewards for using the protocol. Every deposit increases the anonymity set, making privacy stronger for everyone.</div></div></li>
+        </ul>
       </div>
-      <div class="terminal-body" id="terminalBody"></div>
+      <div class="tbox reveal">
+        <div class="tbox-title">TOKENOMICS</div>
+        <div class="trow"><span class="tl2">Token</span><span class="tv ac">$SPECTRE</span></div>
+        <div class="trow"><span class="tl2">Chain</span><span class="tv">Solana (SPL)</span></div>
+        <div class="trow"><span class="tl2">Total Supply</span><span class="tv">1,000,000,000</span></div>
+        <div class="trow"><span class="tl2">Privacy Mining</span><span class="tv">40%</span></div>
+        <div class="trow"><span class="tl2">Liquidity</span><span class="tv">25%</span></div>
+        <div class="trow"><span class="tl2">Team & Dev</span><span class="tv">15%</span></div>
+        <div class="trow"><span class="tl2">Treasury / DAO</span><span class="tv">10%</span></div>
+        <div class="trow"><span class="tl2">Relayer Rewards</span><span class="tv">10%</span></div>
+        <div class="tca"><div><div class="tca-label">Contract Address</div><div class="tca-val" id="tokenCA">Coming Soon</div></div><button class="tca-copy" id="copyCA" style="display:none" onclick="copyCA()">Copy</button></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- App Section -->
 <section class="app-section" id="app">
-  <div class="container" style="text-align:center;">
-    <div class="reveal">
-      <span class="section-label">// Shielded Transfers</span>
-      <h2 class="section-title">Enter the Void</h2>
-      <p class="section-desc" style="margin:0 auto;">Deposit SOL. Generate your secret note. Withdraw from any wallet. Zero link.</p>
-    </div>
-  </div>
-  <div class="app-container reveal">
-    <div class="pool-info">
-      <div class="pool-info-title">Pool Status</div>
-      <div class="pool-stats">
-        <div>
-          <div class="pool-stat-value">--</div>
-          <div class="pool-stat-label">Pool Balance</div>
-        </div>
-        <div>
-          <div class="pool-stat-value">--</div>
-          <div class="pool-stat-label">Total Deposits</div>
-        </div>
-        <div>
-          <div class="pool-stat-value">--</div>
-          <div class="pool-stat-label">Anonymity Set</div>
-        </div>
-      </div>
-    </div>
+  <div class="container" style="text-align:center"><div class="reveal"><span class="sec-label">// Shielded Transfers</span><h2 class="sec-title">Enter the Void</h2><p class="sec-desc" style="margin:0 auto">Connect your wallet. Deposit SOL. Generate your secret note. Withdraw from any wallet. Zero link.</p></div></div>
+  <div class="app-wrap reveal">
+    <div class="pool-bar"><div class="pool-bar-title">Pool Status</div><div class="pool-row"><div><div class="pv">--</div><div class="pl">Pool Balance</div></div><div><div class="pv">--</div><div class="pl">Total Deposits</div></div><div><div class="pv">--</div><div class="pl">Anonymity Set</div></div></div></div>
     <div class="app-box">
-      <div class="app-tabs">
-        <button class="app-tab active" data-tab="deposit">Deposit</button>
-        <button class="app-tab" data-tab="withdraw">Withdraw</button>
-      </div>
-
-      <!-- Deposit Panel -->
+      <div class="app-tabs"><button class="app-tab active" data-tab="deposit">Deposit</button><button class="app-tab" data-tab="withdraw">Withdraw</button></div>
       <div class="app-body">
         <div class="app-panel active" id="panel-deposit">
-          <div class="input-group">
-            <label class="input-label">Amount (SOL)</label>
-            <input type="text" class="input-field" placeholder="0.00" id="depositAmount" readonly value="1">
-            <div class="amount-presets">
-              <button class="preset-btn" data-amount="1">1 SOL</button>
-              <button class="preset-btn" data-amount="5">5 SOL</button>
-              <button class="preset-btn active" data-amount="10">10 SOL</button>
-              <button class="preset-btn" data-amount="100">100 SOL</button>
-            </div>
-          </div>
-
-          <div class="input-group" style="margin-bottom:0.8rem;">
-            <div class="info-row">
-              <span class="label">Protocol Fee</span>
-              <span class="value">0.15%</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Relayer Gas Buffer</span>
-              <span class="value">0.005 SOL</span>
-            </div>
-            <div class="info-row">
-              <span class="label">You Receive</span>
-              <span class="value" id="receiveAmount">~0.995 SOL</span>
-            </div>
-          </div>
-
-          <button class="btn-app connect-wallet" id="connectBtn" onclick="connectWallet()">
-            Connect Wallet
-          </button>
-
-          <div class="note-display" id="noteDisplay">
-            <span id="noteText"></span>
-          </div>
-          <div class="note-warning" id="noteWarning" style="display:none;">
-            &#9888; SAVE THIS NOTE. It is the only way to withdraw your funds. If you lose it, your funds are gone forever.
-          </div>
+          <div class="ig"><label class="il">Amount (SOL)</label><input type="text" class="inp" id="depAmt" value="10" readonly><div class="presets"><button class="preset" data-v="1">1 SOL</button><button class="preset" data-v="5">5 SOL</button><button class="preset active" data-v="10">10 SOL</button><button class="preset" data-v="100">100 SOL</button></div></div>
+          <div class="ig" style="margin-bottom:.6rem"><div class="fr"><span class="fl">Protocol Fee</span><span class="fv">0.15%</span></div><div class="fr"><span class="fl">Relayer Gas</span><span class="fv">0.005 SOL</span></div><div class="fr"><span class="fl">You Receive</span><span class="fv" id="recvAmt">~9.98 SOL</span></div></div>
+          <button class="btn-app outline" id="walletBtn" onclick="handleWallet()">Connect Wallet</button>
+          <div class="note-out" id="noteBox"><span id="noteTxt"></span></div>
+          <div class="note-warn" id="noteWarn">&#9888; SAVE THIS NOTE. It is the only way to withdraw your funds. If lost, your SOL is gone forever.</div>
         </div>
-
-        <!-- Withdraw Panel -->
         <div class="app-panel" id="panel-withdraw">
-          <div class="input-group">
-            <label class="input-label">Secret Note</label>
-            <input type="text" class="input-field" placeholder="spectre-0x..." id="withdrawNote">
-          </div>
-          <div class="input-group">
-            <label class="input-label">Recipient Address</label>
-            <input type="text" class="input-field" placeholder="Solana wallet address..." id="recipientAddr">
-          </div>
-
-          <div class="input-group" style="margin-bottom:0;">
-            <div class="info-row">
-              <span class="label">Status</span>
-              <span class="value" style="color: var(--accent);" id="withdrawStatus">Ready</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Relayer</span>
-              <span class="value" id="relayerStatus">Connected</span>
-            </div>
-          </div>
-
-          <button class="btn-app" onclick="initiateWithdraw()">
-            Generate Proof & Withdraw
-          </button>
+          <div class="ig"><label class="il">Secret Note</label><input type="text" class="inp" placeholder="spectre-0x..." id="wNote"></div>
+          <div class="ig"><label class="il">Recipient Address</label><input type="text" class="inp" placeholder="Solana wallet address..." id="wRecip"></div>
+          <div class="ig" style="margin-bottom:0"><div class="fr"><span class="fl">Status</span><span class="fv" style="color:var(--ac)" id="wStatus">Ready</span></div><div class="fr"><span class="fl">Relayer</span><span class="fv">Connected</span></div></div>
+          <button class="btn-app" onclick="doWithdraw()">Generate Proof & Withdraw</button>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Footer -->
-<footer>
-  <div class="footer-content">
-    <div class="footer-brand">SPECTRE_</div>
-    <ul class="footer-links">
-      <li><a href="https://x.com/" target="_blank">X / Twitter</a></li>
-      <li><a href="https://github.com/" target="_blank">GitHub</a></li>
-      <li><a href="#docs">Docs</a></li>
-      <li><a href="https://discord.gg/" target="_blank">Discord</a></li>
-    </ul>
+<section class="term-section" id="docs">
+  <div class="container">
+    <div class="reveal"><span class="sec-label">// Quick Start</span><h2 class="sec-title">Ghost Protocol</h2><p class="sec-desc">Open source. Fork it. Deploy it. Disappear.</p></div>
+    <div class="term reveal" id="terminal">
+      <div class="term-bar"><div class="td2 r"></div><div class="td2 y"></div><div class="td2 g"></div><span class="term-lbl">spectre@solana:~</span></div>
+      <div class="term-body" id="termBody"></div>
+    </div>
   </div>
-  <p class="footer-copy">
-    SPECTRE Protocol &mdash; Zero-Knowledge Privacy on Solana &mdash; All transactions are final and irreversible.
-    <br>Use at your own risk. SPECTRE does not store any user data or private keys.
-  </p>
+</section>
+
+<section class="roadmap-section">
+  <div class="container">
+    <div class="reveal"><span class="sec-label">// Roadmap</span><h2 class="sec-title">The Path Forward</h2></div>
+    <div class="rm-grid">
+      <div class="rm-phase current reveal"><div class="rm-label">Phase 1</div><div class="rm-title">Foundation</div><ul class="rm-items"><li>Core protocol on devnet</li><li>ZK circuit implementation</li><li>Single relayer operation</li><li>$SPECTRE token launch</li><li>Website & documentation</li></ul></div>
+      <div class="rm-phase reveal"><div class="rm-label">Phase 2</div><div class="rm-title">Expansion</div><ul class="rm-items"><li>Mainnet deployment</li><li>Security audit</li><li>Multi-relayer network</li><li>Privacy mining rewards</li><li>SPL token support</li></ul></div>
+      <div class="rm-phase reveal"><div class="rm-label">Phase 3</div><div class="rm-title">Governance</div><ul class="rm-items"><li>DAO governance launch</li><li>Relayer staking system</li><li>Fee reduction tiers</li><li>Treasury management</li><li>Cross-chain bridge</li></ul></div>
+      <div class="rm-phase reveal"><div class="rm-label">Phase 4</div><div class="rm-title">Evolution</div><ul class="rm-items"><li>Mobile wallet SDK</li><li>Private swaps</li><li>Multi-chain deployment</li><li>Decentralized relayer mesh</li><li>Advanced ZK circuits</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">SPECTRE_</div>
+    <ul class="footer-links"><li><a href="https://x.com/" target="_blank">X / Twitter</a></li><li><a href="https://github.com/spectre-protocol-dev/spectre-protocol" target="_blank">GitHub</a></li><li><a href="#docs">Docs</a></li><li><a href="https://discord.gg/" target="_blank">Discord</a></li></ul>
+  </div>
+  <p class="footer-copy">SPECTRE Protocol — Zero-Knowledge Privacy on Solana — All transactions are final and irreversible.<br>Use at your own risk. SPECTRE does not store any user data or private keys.</p>
 </footer>
 
 <script>
-// ═══════════════════════════════════════
-// PARTICLES
-// ═══════════════════════════════════════
-const canvas = document.getElementById('particles');
-const ctx = canvas.getContext('2d');
-let particles = [];
+const C=document.getElementById('void'),X=C.getContext('2d');let PP=[];
+function rC(){C.width=innerWidth;C.height=innerHeight}rC();addEventListener('resize',rC);
+class Pt{constructor(){this.r()}r(){this.x=Math.random()*C.width;this.y=Math.random()*C.height;this.s=Math.random()*1.2+.3;this.dx=(Math.random()-.5)*.25;this.dy=(Math.random()-.5)*.25;this.o=Math.random()*.35+.08}u(){this.x+=this.dx;this.y+=this.dy;if(this.x<0||this.x>C.width||this.y<0||this.y>C.height)this.r()}d(){X.beginPath();X.arc(this.x,this.y,this.s,0,Math.PI*2);X.fillStyle=`rgba(0,255,163,${this.o})`;X.fill()}}
+for(let i=0;i<70;i++)PP.push(new Pt);
+function dP(){X.clearRect(0,0,C.width,C.height);PP.forEach(p=>{p.u();p.d()});for(let i=0;i<PP.length;i++)for(let j=i+1;j<PP.length;j++){const dx=PP[i].x-PP[j].x,dy=PP[i].y-PP[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<110){X.beginPath();X.moveTo(PP[i].x,PP[i].y);X.lineTo(PP[j].x,PP[j].y);X.strokeStyle=`rgba(0,255,163,${.05*(1-d/110)})`;X.lineWidth=.5;X.stroke()}}requestAnimationFrame(dP)}dP();
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+const burger=document.getElementById('burger'),nL=document.getElementById('navLinks');
+addEventListener('scroll',()=>document.querySelector('nav').classList.toggle('scrolled',scrollY>50));
+burger.onclick=()=>{burger.classList.toggle('active');nL.classList.toggle('open')};
+nL.querySelectorAll('a').forEach(a=>a.onclick=()=>{burger.classList.remove('active');nL.classList.remove('open')});
 
-class Particle {
-  constructor() {
-    this.reset();
-  }
-  reset() {
-    this.x = Math.random() * canvas.width;
-    this.y = Math.random() * canvas.height;
-    this.size = Math.random() * 1.5 + 0.3;
-    this.speedX = (Math.random() - 0.5) * 0.3;
-    this.speedY = (Math.random() - 0.5) * 0.3;
-    this.opacity = Math.random() * 0.4 + 0.1;
-  }
-  update() {
-    this.x += this.speedX;
-    this.y += this.speedY;
-    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-      this.reset();
-    }
-  }
-  draw() {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0, 255, 163, ${this.opacity})`;
-    ctx.fill();
-  }
-}
+const obs=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting)en.target.classList.add('visible')}),{threshold:.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 
-for (let i = 0; i < 80; i++) particles.push(new Particle());
+function aC(el,end,s='',p=''){const dur=2e3,st=performance.now();(function u(n){const pr=Math.min((n-st)/dur,1),e=1-Math.pow(1-pr,3);el.textContent=p+Math.floor(end*e).toLocaleString()+s;if(pr<1)requestAnimationFrame(u)})(st)}
+setTimeout(()=>{aC(document.getElementById('mTVL'),12480,' SOL');aC(document.getElementById('mTX'),8293,'+');aC(document.getElementById('mAS'),4712,'')},800);
 
-function drawLines() {
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const dx = particles[i].x - particles[j].x;
-      const dy = particles[i].y - particles[j].y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 120) {
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.strokeStyle = `rgba(0, 255, 163, ${0.06 * (1 - dist / 120)})`;
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-      }
-    }
-  }
-}
+document.querySelectorAll('.app-tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.app-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.app-panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active')});
 
-function animateParticles() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach(p => { p.update(); p.draw(); });
-  drawLines();
-  requestAnimationFrame(animateParticles);
-}
-animateParticles();
+document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));b.classList.add('active');const a=parseFloat(b.dataset.v);document.getElementById('depAmt').value=a;document.getElementById('recvAmt').textContent='~'+(a-a*.0015-.005).toFixed(3)+' SOL'});
 
-// ═══════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════
-const navbar = document.getElementById('navbar');
-const hamburger = document.getElementById('hamburger');
-const navLinks = document.getElementById('navLinks');
+let connected=false;
+async function handleWallet(){const btn=document.getElementById('walletBtn');if(!connected){if(window.solana&&window.solana.isPhantom){try{btn.textContent='Connecting...';btn.disabled=true;const r=await window.solana.connect();connected=true;btn.textContent='Deposit SOL';btn.classList.remove('outline');btn.disabled=false;btn.onclick=doDeposit}catch(e){btn.textContent='Connection Rejected';btn.disabled=false;setTimeout(()=>{btn.textContent='Connect Wallet'},2e3)}}else{window.open('https://phantom.app/','_blank');btn.textContent='Install Phantom';setTimeout(()=>{btn.textContent='Connect Wallet'},3e3)}}}
 
-window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 50);
-});
+function doDeposit(){const btn=document.getElementById('walletBtn');btn.textContent='Generating Commitment...';btn.disabled=true;setTimeout(()=>{const note='spectre-0x'+Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('');document.getElementById('noteTxt').textContent=note;document.getElementById('noteBox').classList.add('show');document.getElementById('noteWarn').classList.add('show');btn.textContent='Deposit Successful'},2500)}
 
-hamburger.addEventListener('click', () => {
-  hamburger.classList.toggle('active');
-  navLinks.classList.toggle('open');
-});
+function doWithdraw(){const n=document.getElementById('wNote').value,r=document.getElementById('wRecip').value,s=document.getElementById('wStatus');if(!n||!r){s.textContent='Missing fields';s.style.color='var(--red)';return}s.textContent='Generating ZK Proof...';s.style.color='var(--warn)';setTimeout(()=>{s.textContent='Submitting to Relayer...';setTimeout(()=>{s.textContent='Withdrawal Complete';s.style.color='var(--ac)'},2e3)},3e3)}
 
-navLinks.querySelectorAll('a').forEach(a => {
-  a.addEventListener('click', () => {
-    hamburger.classList.remove('active');
-    navLinks.classList.remove('open');
-  });
-});
+function copyCA(){const c=document.getElementById('tokenCA').textContent;navigator.clipboard.writeText(c);const b=document.getElementById('copyCA');b.textContent='Copied!';setTimeout(()=>{b.textContent='Copy'},1500)}
 
-// ═══════════════════════════════════════
-// SCROLL REVEAL
-// ═══════════════════════════════════════
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('visible'); }
-  });
-}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
-
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-// ═══════════════════════════════════════
-// HERO COUNTER ANIMATION
-// ═══════════════════════════════════════
-function animateCounter(el, end, suffix = '', prefix = '') {
-  const duration = 2000;
-  const start = 0;
-  const startTime = performance.now();
-  function update(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.floor(start + (end - start) * eased);
-    el.textContent = prefix + current.toLocaleString() + suffix;
-    if (progress < 1) requestAnimationFrame(update);
-  }
-  requestAnimationFrame(update);
-}
-
-setTimeout(() => {
-  animateCounter(document.getElementById('tvlCounter'), 12480, ' SOL');
-  animateCounter(document.getElementById('txCounter'), 8293, '+');
-  animateCounter(document.getElementById('anonCounter'), 4712, '');
-}, 800);
-
-// ═══════════════════════════════════════
-// APP TABS
-// ═══════════════════════════════════════
-document.querySelectorAll('.app-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.app-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.app-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-  });
-});
-
-// ═══════════════════════════════════════
-// AMOUNT PRESETS
-// ═══════════════════════════════════════
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const amount = parseFloat(btn.dataset.amount);
-    document.getElementById('depositAmount').value = amount;
-    const fee = amount * 0.0015;
-    const gas = 0.005;
-    const receive = (amount - fee - gas).toFixed(4);
-    document.getElementById('receiveAmount').textContent = '~' + receive + ' SOL';
-  });
-});
-
-// ═══════════════════════════════════════
-// WALLET CONNECTION (MOCK)
-// ═══════════════════════════════════════
-let walletConnected = false;
-
-function connectWallet() {
-  const btn = document.getElementById('connectBtn');
-  if (!walletConnected) {
-    btn.textContent = 'Connecting...';
-    btn.disabled = true;
-    setTimeout(() => {
-      walletConnected = true;
-      btn.textContent = 'Deposit SOL';
-      btn.classList.remove('connect-wallet');
-      btn.disabled = false;
-      btn.onclick = depositSOL;
-    }, 1500);
-  }
-}
-
-function depositSOL() {
-  const btn = document.getElementById('connectBtn');
-  btn.textContent = 'Generating Commitment...';
-  btn.disabled = true;
-  setTimeout(() => {
-    const note = 'spectre-0x' + Array.from({length: 64}, () =>
-      '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
-    document.getElementById('noteText').textContent = note;
-    document.getElementById('noteDisplay').classList.add('visible');
-    document.getElementById('noteWarning').style.display = 'flex';
-    btn.textContent = 'Deposit Successful';
-    btn.style.background = 'var(--accent)';
-    btn.style.color = 'var(--bg-primary)';
-  }, 2500);
-}
-
-function initiateWithdraw() {
-  const note = document.getElementById('withdrawNote').value;
-  const recipient = document.getElementById('recipientAddr').value;
-  const status = document.getElementById('withdrawStatus');
-
-  if (!note || !recipient) {
-    status.textContent = 'Missing fields';
-    status.style.color = 'var(--danger)';
-    return;
-  }
-
-  status.textContent = 'Generating ZK Proof...';
-  status.style.color = 'var(--warning)';
-
-  setTimeout(() => {
-    status.textContent = 'Submitting to Relayer...';
-    setTimeout(() => {
-      status.textContent = 'Withdrawal Complete';
-      status.style.color = 'var(--accent)';
-    }, 2000);
-  }, 3000);
-}
-
-// ═══════════════════════════════════════
-// TERMINAL ANIMATION
-// ═══════════════════════════════════════
-const terminalLines = [
-  { type: 'prompt', text: '$ git clone https://github.com/spectre-cash/spectre.git' },
-  { type: 'output', text: 'Cloning into \'spectre\'...' },
-  { type: 'output', text: 'Resolving deltas: 100% (247/247), done.' },
-  { type: 'prompt', text: '$ cd spectre && anchor build' },
-  { type: 'output', text: 'Building program: spectre_privacy_pool...' },
-  { type: 'success', text: '  Build successful. Program ID: 6mXQ...YoYB9' },
-  { type: 'prompt', text: '$ anchor deploy --provider.cluster devnet' },
-  { type: 'success', text: '  Program deployed successfully.' },
-  { type: 'prompt', text: '$ node tests/deposit.js --amount 10' },
-  { type: 'output', text: 'Generating commitment...' },
-  { type: 'success', text: '  Deposit confirmed. Commitment added to Merkle tree.' },
-  { type: 'hash', text: '  tx: 4xJ7kF...9mNr2w' },
-  { type: 'prompt', text: '$ _' },
-];
-
-function animateTerminal() {
-  const body = document.getElementById('terminalBody');
-  const termSection = document.getElementById('terminal');
-  let started = false;
-
-  const termObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && !started) {
-      started = true;
-      let i = 0;
-      function addLine() {
-        if (i >= terminalLines.length) return;
-        const line = terminalLines[i];
-        const div = document.createElement('div');
-        div.className = 'terminal-line';
-        div.style.animationDelay = '0s';
-
-        if (line.type === 'prompt') {
-          div.innerHTML = `<span class="prompt">$</span> <span class="cmd">${line.text.substring(2)}</span>`;
-        } else {
-          div.innerHTML = `<span class="${line.type}">${line.text}</span>`;
-        }
-        body.appendChild(div);
-        i++;
-        setTimeout(addLine, line.type === 'prompt' ? 600 : 300);
-      }
-      addLine();
-    }
-  }, { threshold: 0.5 });
-
-  termObserver.observe(termSection);
-}
-
-animateTerminal();
+const tL=[{t:'p',x:'git clone https://github.com/spectre-protocol-dev/spectre-protocol.git'},{t:'o',x:"Cloning into 'spectre-protocol'..."},{t:'o',x:'Resolving deltas: 100% (247/247), done.'},{t:'p',x:'cd spectre-protocol && anchor build'},{t:'o',x:'Building program: spectre_privacy_pool...'},{t:'s',x:'  Build successful.'},{t:'p',x:'anchor deploy --provider.cluster devnet'},{t:'s',x:'  Program deployed successfully.'},{t:'p',x:'node scripts/deposit.js --amount 10'},{t:'o',x:'Generating commitment...'},{t:'s',x:'  Deposit confirmed. Commitment anchored to tree.'},{t:'d',x:'  tx: 4xJ7kF...9mNr2w'},{t:'p',x:'_'}];
+(function(){const b=document.getElementById('termBody'),tm=document.getElementById('terminal');let d=false;new IntersectionObserver(e=>{if(e[0].isIntersecting&&!d){d=true;let i=0;(function a(){if(i>=tL.length)return;const l=tL[i],el=document.createElement('div');el.className='tline';if(l.t==='p')el.innerHTML='<span class="pr">$</span> <span class="cm">'+l.x+'</span>';else{const c={o:'out',s:'ok',d:'dim'};el.innerHTML='<span class="'+c[l.t]+'">'+l.x+'</span>'}b.appendChild(el);i++;setTimeout(a,l.t==='p'?550:250)}())}},{threshold:.5}).observe(tm)})();
 </script>
 </body>
 </html>
