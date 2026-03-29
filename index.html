@@ -9,6 +9,7 @@
 <meta property="og:description" content="Zero-Knowledge Privacy Protocol on Solana. Break every on-chain link.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#030408;--bg1:#05070d;--bg2:#080b16;--bgc:#0b0e1c;--bgch:#0f1328;--ac:#00ffa3;--acd:#00ffa318;--acm:#00ffa344;--ghost:#7a8599;--t1:#e8edf5;--t2:#a0aec0;--td:#4a5568;--red:#ff4757;--warn:#ffc107;--brd:#151b30;--glow:0 0 30px #00ffa322,0 0 60px #00ffa311}
@@ -173,7 +174,9 @@ footer{position:relative;z-index:1;padding:3.5rem 2rem;border-top:1px solid var(
 <body>
 <canvas id="void"></canvas>
 
-<nav>
+<div id="devnetBanner" style="position:fixed;top:0;left:0;right:0;z-index:1001;background:linear-gradient(90deg,#1a0a00,#2a1500,#1a0a00);border-bottom:1px solid #ff8c00;padding:.45rem 1rem;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:1px;color:#ffc107">Running on Solana Devnet — Test tokens only</div>
+
+<nav style="top:32px">
   <a href="#" class="logo">SPECTRE</a>
   <button class="hamburger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
   <ul class="nav-links" id="navLinks">
@@ -274,7 +277,7 @@ footer{position:relative;z-index:1;padding:3.5rem 2rem;border-top:1px solid var(
 <section class="app-section" id="app">
   <div class="container" style="text-align:center"><div class="reveal"><span class="sec-label">// Shielded Transfers</span><h2 class="sec-title">Enter the Void</h2><p class="sec-desc" style="margin:0 auto">Connect your wallet. Deposit SOL. Generate your secret note. Withdraw from any wallet. Zero link.</p></div></div>
   <div class="app-wrap reveal">
-    <div class="pool-bar"><div class="pool-bar-title">Pool Status</div><div class="pool-row"><div><div class="pv">--</div><div class="pl">Pool Balance</div></div><div><div class="pv">--</div><div class="pl">Total Deposits</div></div><div><div class="pv">--</div><div class="pl">Anonymity Set</div></div></div></div>
+    <div class="pool-bar"><div class="pool-bar-title">Pool Status <span style="background:#ffc107;color:#000;font-size:.5rem;padding:.1rem .4rem;margin-left:.5rem;letter-spacing:1px">DEVNET</span></div><div class="pool-row"><div><div class="pv" id="poolBal">--</div><div class="pl">Program Balance</div></div><div><div class="pv" id="poolDeps">0</div><div class="pl">Total Deposits</div></div><div><div class="pv" id="userBal">--</div><div class="pl">Your Balance</div></div></div></div>
     <div class="app-box">
       <div class="app-tabs"><button class="app-tab active" data-tab="deposit">Deposit</button><button class="app-tab" data-tab="withdraw">Withdraw</button></div>
       <div class="app-body">
@@ -284,12 +287,14 @@ footer{position:relative;z-index:1;padding:3.5rem 2rem;border-top:1px solid var(
           <button class="btn-app outline" id="walletBtn" onclick="handleWallet()">Connect Wallet</button>
           <div class="note-out" id="noteBox"><span id="noteTxt"></span></div>
           <div class="note-warn" id="noteWarn">&#9888; SAVE THIS NOTE. It is the only way to withdraw your funds. If lost, your SOL is gone forever.</div>
+          <div class="note-out" id="txBox" style="display:none"><span id="txTxt"></span></div>
         </div>
         <div class="app-panel" id="panel-withdraw">
-          <div class="ig"><label class="il">Secret Note</label><input type="text" class="inp" placeholder="spectre-0x..." id="wNote"></div>
-          <div class="ig"><label class="il">Recipient Address</label><input type="text" class="inp" placeholder="Solana wallet address..." id="wRecip"></div>
-          <div class="ig" style="margin-bottom:0"><div class="fr"><span class="fl">Status</span><span class="fv" style="color:var(--ac)" id="wStatus">Ready</span></div><div class="fr"><span class="fl">Relayer</span><span class="fv">Connected</span></div></div>
-          <button class="btn-app" onclick="doWithdraw()">Generate Proof & Withdraw</button>
+          <div style="text-align:center;padding:2.5rem 1rem">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;color:var(--acm);margin-bottom:1rem">&#128274;</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--t2);margin-bottom:.6rem">Coming Soon</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--td);line-height:1.6">Relayer deployment in progress.<br>ZK proof withdrawal will be enabled in the next release.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -327,37 +332,207 @@ footer{position:relative;z-index:1;padding:3.5rem 2rem;border-top:1px solid var(
 </footer>
 
 <script>
+// ── Canvas particles ──
 const C=document.getElementById('void'),X=C.getContext('2d');let PP=[];
 function rC(){C.width=innerWidth;C.height=innerHeight}rC();addEventListener('resize',rC);
 class Pt{constructor(){this.r()}r(){this.x=Math.random()*C.width;this.y=Math.random()*C.height;this.s=Math.random()*1.2+.3;this.dx=(Math.random()-.5)*.25;this.dy=(Math.random()-.5)*.25;this.o=Math.random()*.35+.08}u(){this.x+=this.dx;this.y+=this.dy;if(this.x<0||this.x>C.width||this.y<0||this.y>C.height)this.r()}d(){X.beginPath();X.arc(this.x,this.y,this.s,0,Math.PI*2);X.fillStyle=`rgba(0,255,163,${this.o})`;X.fill()}}
 for(let i=0;i<70;i++)PP.push(new Pt);
 function dP(){X.clearRect(0,0,C.width,C.height);PP.forEach(p=>{p.u();p.d()});for(let i=0;i<PP.length;i++)for(let j=i+1;j<PP.length;j++){const dx=PP[i].x-PP[j].x,dy=PP[i].y-PP[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<110){X.beginPath();X.moveTo(PP[i].x,PP[i].y);X.lineTo(PP[j].x,PP[j].y);X.strokeStyle=`rgba(0,255,163,${.05*(1-d/110)})`;X.lineWidth=.5;X.stroke()}}requestAnimationFrame(dP)}dP();
 
+// ── Nav ──
 const burger=document.getElementById('burger'),nL=document.getElementById('navLinks');
 addEventListener('scroll',()=>document.querySelector('nav').classList.toggle('scrolled',scrollY>50));
 burger.onclick=()=>{burger.classList.toggle('active');nL.classList.toggle('open')};
 nL.querySelectorAll('a').forEach(a=>a.onclick=()=>{burger.classList.remove('active');nL.classList.remove('open')});
 
+// ── Reveal animations ──
 const obs=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting)en.target.classList.add('visible')}),{threshold:.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 
+// ── Solana devnet connection ──
+const connection = new solanaWeb3.Connection('https://api.devnet.solana.com', 'confirmed');
+const PROGRAM_ID = new solanaWeb3.PublicKey('CGGCXL7QsD2MeMnFNqsGroZkTN3TXtc3iVDUcFa4UgUh');
+let walletPubkey = null;
+let depositCount = 0;
+
+// ── Fetch pool data from devnet ──
+async function updatePoolStatus() {
+  try {
+    const progInfo = await connection.getAccountInfo(PROGRAM_ID);
+    if (progInfo) {
+      document.getElementById('poolBal').textContent = (progInfo.lamports / 1e9).toFixed(2) + ' SOL';
+    } else {
+      document.getElementById('poolBal').textContent = '0 SOL';
+    }
+    document.getElementById('poolDeps').textContent = depositCount.toString();
+  } catch (e) {
+    document.getElementById('poolBal').textContent = 'Error';
+  }
+}
+updatePoolStatus();
+setInterval(updatePoolStatus, 15000);
+
+// ── Hero metrics (animated) ──
 function aC(el,end,s='',p=''){const dur=2e3,st=performance.now();(function u(n){const pr=Math.min((n-st)/dur,1),e=1-Math.pow(1-pr,3);el.textContent=p+Math.floor(end*e).toLocaleString()+s;if(pr<1)requestAnimationFrame(u)})(st)}
 setTimeout(()=>{aC(document.getElementById('mTVL'),12480,' SOL');aC(document.getElementById('mTX'),8293,'+');aC(document.getElementById('mAS'),4712,'')},800);
 
+// ── App tabs ──
 document.querySelectorAll('.app-tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.app-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.app-panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active')});
 
+// ── Presets ──
 document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));b.classList.add('active');const a=parseFloat(b.dataset.v);document.getElementById('depAmt').value=a;document.getElementById('recvAmt').textContent='~'+(a-a*.0015-.005).toFixed(3)+' SOL'});
 
-let connected=false;
-async function handleWallet(){const btn=document.getElementById('walletBtn');if(!connected){if(window.solana&&window.solana.isPhantom){try{btn.textContent='Connecting...';btn.disabled=true;const r=await window.solana.connect();connected=true;btn.textContent='Deposit SOL';btn.classList.remove('outline');btn.disabled=false;btn.onclick=doDeposit}catch(e){btn.textContent='Connection Rejected';btn.disabled=false;setTimeout(()=>{btn.textContent='Connect Wallet'},2e3)}}else{window.open('https://phantom.app/','_blank');btn.textContent='Install Phantom';setTimeout(()=>{btn.textContent='Connect Wallet'},3e3)}}}
+// ── Wallet connection ──
+let connected = false;
 
-function doDeposit(){const btn=document.getElementById('walletBtn');btn.textContent='Generating Commitment...';btn.disabled=true;setTimeout(()=>{const note='spectre-0x'+Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('');document.getElementById('noteTxt').textContent=note;document.getElementById('noteBox').classList.add('show');document.getElementById('noteWarn').classList.add('show');btn.textContent='Deposit Successful'},2500)}
+async function updateUserBalance() {
+  if (!walletPubkey) return;
+  try {
+    const bal = await connection.getBalance(walletPubkey);
+    document.getElementById('userBal').textContent = (bal / 1e9).toFixed(4) + ' SOL';
+    if (bal === 0) {
+      document.getElementById('userBal').innerHTML = '0 SOL <a href="https://faucet.solana.com" target="_blank" style="color:var(--warn);font-size:.55rem;margin-left:.3rem">Get devnet SOL</a>';
+    }
+  } catch(e) {}
+}
 
-function doWithdraw(){const n=document.getElementById('wNote').value,r=document.getElementById('wRecip').value,s=document.getElementById('wStatus');if(!n||!r){s.textContent='Missing fields';s.style.color='var(--red)';return}s.textContent='Generating ZK Proof...';s.style.color='var(--warn)';setTimeout(()=>{s.textContent='Submitting to Relayer...';setTimeout(()=>{s.textContent='Withdrawal Complete';s.style.color='var(--ac)'},2e3)},3e3)}
+function truncAddr(addr) {
+  const s = addr.toString();
+  return s.slice(0,4) + '...' + s.slice(-4);
+}
 
+async function handleWallet() {
+  const btn = document.getElementById('walletBtn');
+  if (!connected) {
+    if (window.solana && window.solana.isPhantom) {
+      try {
+        btn.textContent = 'Connecting...';
+        btn.disabled = true;
+        const resp = await window.solana.connect();
+        walletPubkey = resp.publicKey;
+        connected = true;
+        btn.textContent = 'Deposit SOL';
+        btn.classList.remove('outline');
+        btn.disabled = false;
+        btn.onclick = doDeposit;
+        await updateUserBalance();
+      } catch(e) {
+        btn.textContent = 'Connection Rejected';
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = 'Connect Wallet'; }, 2000);
+      }
+    } else {
+      window.open('https://phantom.app/', '_blank');
+      btn.textContent = 'Install Phantom';
+      setTimeout(() => { btn.textContent = 'Connect Wallet'; }, 3000);
+    }
+  }
+}
+
+// ── Deposit (real devnet transaction) ──
+async function doDeposit() {
+  const btn = document.getElementById('walletBtn');
+  const amount = parseFloat(document.getElementById('depAmt').value);
+  const lamports = amount * 1e9;
+
+  if (!walletPubkey) return;
+
+  // Check balance
+  const bal = await connection.getBalance(walletPubkey);
+  if (bal < lamports + 10000000) {
+    btn.textContent = 'Insufficient Balance';
+    btn.style.background = 'var(--red)';
+    setTimeout(() => { btn.textContent = 'Deposit SOL'; btn.style.background = ''; }, 2500);
+    return;
+  }
+
+  btn.textContent = 'Generating Commitment...';
+  btn.disabled = true;
+
+  try {
+    // Generate cryptographic secrets (same as deposit.js)
+    const nullifier = new Uint8Array(31);
+    const secret = new Uint8Array(31);
+    crypto.getRandomValues(nullifier);
+    crypto.getRandomValues(secret);
+
+    // Compute commitment = SHA-256(nullifier || secret)
+    const commitData = new Uint8Array(62);
+    commitData.set(nullifier, 0);
+    commitData.set(secret, 31);
+    const commitHash = await crypto.subtle.digest('SHA-256', commitData);
+    const commitment = new Uint8Array(commitHash);
+
+    btn.textContent = 'Sending Transaction...';
+
+    // Create a real SOL transfer to the program address (vault simulation on devnet)
+    const tx = new solanaWeb3.Transaction().add(
+      solanaWeb3.SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: PROGRAM_ID,
+        lamports: lamports,
+      })
+    );
+
+    tx.feePayer = walletPubkey;
+    const { blockhash } = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+
+    // Sign and send via Phantom
+    const signed = await window.solana.signAndSendTransaction(tx);
+    await connection.confirmTransaction(signed.signature, 'confirmed');
+
+    depositCount++;
+
+    // Generate the secret note
+    const noteData = {
+      version: 1,
+      amount: amount,
+      nullifier: Array.from(nullifier).map(b => b.toString(16).padStart(2,'0')).join(''),
+      secret: Array.from(secret).map(b => b.toString(16).padStart(2,'0')).join(''),
+      commitment: Array.from(commitment).map(b => b.toString(16).padStart(2,'0')).join(''),
+      timestamp: Date.now(),
+    };
+    const note = 'spectre-' + btoa(JSON.stringify(noteData));
+
+    // Show note
+    document.getElementById('noteTxt').textContent = note;
+    document.getElementById('noteBox').classList.add('show');
+    document.getElementById('noteWarn').classList.add('show');
+
+    // Show TX link
+    const txBox = document.getElementById('txBox');
+    const txTxt = document.getElementById('txTxt');
+    txTxt.innerHTML = 'TX: <a href="https://explorer.solana.com/tx/' + signed.signature + '?cluster=devnet" target="_blank" style="color:var(--ac)">' + signed.signature.slice(0,20) + '...</a>';
+    txBox.style.display = 'block';
+
+    btn.textContent = 'Deposit Confirmed';
+    btn.style.background = 'var(--ac)';
+
+    // Update balances
+    await updateUserBalance();
+    await updatePoolStatus();
+
+    setTimeout(() => {
+      btn.textContent = 'Deposit SOL';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 4000);
+
+  } catch(e) {
+    console.error('Deposit error:', e);
+    btn.textContent = e.message && e.message.includes('reject') ? 'Transaction Rejected' : 'Deposit Failed';
+    btn.style.background = 'var(--red)';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = 'Deposit SOL'; btn.style.background = ''; }, 3000);
+  }
+}
+
+// ── Token CA copy ──
 function copyCA(){const c=document.getElementById('tokenCA').textContent;navigator.clipboard.writeText(c);const b=document.getElementById('copyCA');b.textContent='Copied!';setTimeout(()=>{b.textContent='Copy'},1500)}
 
-const tL=[{t:'p',x:'git clone https://github.com/spectre-protocol-dev/spectre-protocol.git'},{t:'o',x:"Cloning into 'spectre-protocol'..."},{t:'o',x:'Resolving deltas: 100% (247/247), done.'},{t:'p',x:'cd spectre-protocol && anchor build'},{t:'o',x:'Building program: spectre_privacy_pool...'},{t:'s',x:'  Build successful.'},{t:'p',x:'anchor deploy --provider.cluster devnet'},{t:'s',x:'  Program deployed successfully.'},{t:'p',x:'node scripts/deposit.js --amount 10'},{t:'o',x:'Generating commitment...'},{t:'s',x:'  Deposit confirmed. Commitment anchored to tree.'},{t:'d',x:'  tx: 4xJ7kF...9mNr2w'},{t:'p',x:'_'}];
+// ── Terminal animation ──
+const tL=[{t:'p',x:'git clone https://github.com/spectre-protocol-dev/spectre-protocol.git'},{t:'o',x:"Cloning into 'spectre-protocol'..."},{t:'o',x:'Resolving deltas: 100% (247/247), done.'},{t:'p',x:'cd spectre-protocol && anchor build'},{t:'o',x:'Building program: spectre_privacy_pool...'},{t:'s',x:'  Build successful.'},{t:'p',x:'anchor deploy --provider.cluster devnet'},{t:'s',x:'  Program ID: CGGCXL7QsD2MeMnFNqsGroZkTN3TXtc3iVDUcFa4UgUh'},{t:'s',x:'  Deploy success.'},{t:'p',x:'node scripts/deposit.js --amount 10'},{t:'o',x:'Generating commitment...'},{t:'s',x:'  Deposit confirmed. Commitment anchored to tree.'},{t:'d',x:'  tx: 55MDyEAV...P4my'},{t:'p',x:'_'}];
 (function(){const b=document.getElementById('termBody'),tm=document.getElementById('terminal');let d=false;new IntersectionObserver(e=>{if(e[0].isIntersecting&&!d){d=true;let i=0;(function a(){if(i>=tL.length)return;const l=tL[i],el=document.createElement('div');el.className='tline';if(l.t==='p')el.innerHTML='<span class="pr">$</span> <span class="cm">'+l.x+'</span>';else{const c={o:'out',s:'ok',d:'dim'};el.innerHTML='<span class="'+c[l.t]+'">'+l.x+'</span>'}b.appendChild(el);i++;setTimeout(a,l.t==='p'?550:250)}())}},{threshold:.5}).observe(tm)})();
 </script>
 </body>
