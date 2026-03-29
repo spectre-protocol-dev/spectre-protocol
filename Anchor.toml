@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-spectre = "SPEC1111111111111111111111111111111111111111"
+spectre = "CGGCXL7QsD2MeMnFNqsGroZkTN3TXtc3iVDUcFa4UgUh"
 
 [registry]
 url = "https://api.apr.dev"

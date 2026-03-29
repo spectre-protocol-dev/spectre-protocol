@@ -4,7 +4,7 @@ use anchor_lang::solana_program::keccak;
 pub mod merkle;
 pub mod verifier;
 
-declare_id!("SPEC1111111111111111111111111111111111111111");
+declare_id!("CGGCXL7QsD2MeMnFNqsGroZkTN3TXtc3iVDUcFa4UgUh");
 
 /// Merkle tree depth - supports 2^20 = 1,048,576 deposits
 const TREE_DEPTH: usize = 20;
@@ -86,10 +86,11 @@ pub mod spectre {
         )?;
 
         // Insert commitment into Merkle tree
+        let current_index = pool.next_index;
         let new_root = merkle::insert(
             &mut pool.filled_subtrees,
             commitment,
-            pool.next_index,
+            current_index,
             TREE_DEPTH,
         );
 
@@ -182,7 +183,7 @@ pub mod spectre {
             pool_key.as_ref(),
             &[ctx.bumps.pool_vault],
         ];
-        let signer_seeds = &[&seeds[..]];
+        let _signer_seeds = &[&seeds[..]];
 
         // Pay recipient
         **ctx.accounts.pool_vault.to_account_info().try_borrow_mut_lamports()? -= amount_to_recipient;
@@ -219,7 +220,7 @@ pub struct Initialize<'info> {
         init,
         payer = authority,
         space = 8 + PoolState::INIT_SPACE,
-        seeds = [b"pool", &denomination.to_le_bytes()],
+        seeds = [b"pool", denomination.to_le_bytes().as_ref()],
         bump,
     )]
     pub pool: Account<'info, PoolState>,
